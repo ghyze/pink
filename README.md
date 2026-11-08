@@ -74,7 +74,7 @@ Only `id` is required. A relation that is left out means the person has no such 
 ## Tests
 | Test | Kind | What it covers |
 |---|---|---|
-| `PersonApiIntegrationTest` | integration | the whole application over real HTTP: matching, the age check, updates, autorepair and invalid records |
+| `PersonApiIntegrationTest` | integration, scenario | the whole application over real HTTP: matching, the age check, updates, autorepair and invalid records |
 | `PersonControllerTest` | slice (`@WebMvcTest`) | status codes, JSON format and validation, with a mocked service |
 | `PersonServiceTest` | unit, scenario | a series of records that build on each other (see below) |
 | `PersonRepositoryTest` | unit | storage, bidirectional relations, updates and the potential matches |
@@ -220,19 +220,25 @@ in the IDE.
 sends real HTTP requests with `RestTestClient`. This covers what the unit tests cannot: the JSON conversion by Jackson,
 the `444` and `400` responses as a client sees them, and all layers working together with the real repository.
 
-Two things make the tests repeatable:
-- "Today" is fixed at 1 January 2026 by a `@Primary` `Clock` bean in a `@TestConfiguration`, so the age check gives
-  the same result every day.
-- Each test starts with an empty repository, because `@DirtiesContext` creates a new application context after every
-  test. This costs a few seconds in total, but the tests cannot influence each other.
+"Today" is fixed at 1 January 2026 by a `@Primary` `Clock` bean in a `@TestConfiguration`, so the age check gives the
+same result every day.
+
+Like `PersonServiceTest`, most of the class is an ordered scenario: each step sends one more record and builds on the
+state the previous steps left behind. Starting the application is the expensive part of these tests, so all tests
+share one application context, and the family that several checks need is built only once. The reasoning and the
+downsides are the same as for `PersonServiceTest`. Two kinds of tests are not part of the scenario: a test that builds
+a family in a different order uses its own IDs, and the invalid records are rejected without storing anything, so
+neither disturbs the scenario. After the class, `@DirtiesContext` throws the context away, so no other test class can
+see its data.
 
 Alternatives:
+- Start every test with an empty repository, with `@DirtiesContext` after every test. Each test then checks one
+  behaviour from a clean start, which makes a failure easier to understand, but the application is started again for
+  every test: this made the class take about twice as long.
+- Share one application context and give every test its own IDs. This is just as fast, but every test has to build
+  its own family, and a test that accidentally uses another test's IDs fails depending on the order the tests run in.
 - `@SpringBootTest` with `MockMvc` instead of a real server. This is a bit faster, but skips the HTTP layer of the
   server.
-- Share one application context and give every test its own IDs. This is faster, but a test that accidentally uses
-  the same ID as another test fails depending on the order in which the tests run.
-- An ordered scenario, as in `PersonServiceTest`. This would avoid repeating the setup, but here each test checks one
-  behaviour from a clean start, which makes a failure easier to understand.
 
 ## Person
 ### Relations as sets
