@@ -25,6 +25,11 @@ On Windows, use `mvnw.cmd` instead of `./mvnw`.
 ## Docker
 The service can also be built and run in Docker, without Java installed locally:
 ```shell
+docker compose up --build   # build the image and start the service on http://localhost:8080
+docker compose down         # stop and remove the container
+```
+`compose.yaml` only builds the image and publishes port 8080. Without Compose, the same can be done with:
+```shell
 docker build -t threekid .
 docker run --rm -p 8080:8080 threekid
 ```
