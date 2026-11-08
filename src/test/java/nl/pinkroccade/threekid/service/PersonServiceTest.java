@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -51,15 +52,15 @@ class PersonServiceTest {
         List<PersonDTO> matches = service.addPerson(ada);
 
         assertThat(matches).isEmpty();
-        assertThat(PersonDTO.from(repository.findPerson(42L))).isEqualTo(ada);
+        assertThat(PersonDTO.from(stored(42L))).isEqualTo(ada);
         assertThat(List.of(1L, 2L, 99L, 77L, 78L)).allSatisfy(id -> {
-            Person relative = repository.findPerson(id);
+            Person relative = stored(id);
             assertThat(relative.getName()).as("name of %d", id).isNull();
             assertThat(relative.getBirthDate()).as("birth date of %d", id).isNull();
         });
-        assertThat(repository.findPerson(1L).getChildren()).extracting(Person::getId).containsExactly(42L);
-        assertThat(repository.findPerson(99L).getPartner().getId()).isEqualTo(42L);
-        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactly(42L);
+        assertThat(stored(1L).getChildren()).extracting(Person::getId).containsExactly(42L);
+        assertThat(stored(99L).getPartner().getId()).isEqualTo(42L);
+        assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
     @Test
@@ -73,12 +74,12 @@ class PersonServiceTest {
         List<PersonDTO> matches = service.addPerson(partner);
 
         assertThat(matches).isEmpty();
-        Person stored = repository.findPerson(99L);
+        Person stored = stored(99L);
         assertThat(stored.getName()).isEqualTo("William King");
         assertThat(stored.getBirthDate()).isEqualTo(LocalDate.of(1805, 2, 21));
         assertThat(stored.getPartner().getId()).isEqualTo(42L);
         assertThat(stored.getChildren()).extracting(Person::getId).containsExactlyInAnyOrder(77L, 78L);
-        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
+        assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test
@@ -93,9 +94,9 @@ class PersonServiceTest {
 
         // 42 has three children now, but 79 does not have partner 99 as parent
         assertThat(matches).isEmpty();
-        assertThat(repository.findPerson(42L).getName()).isEqualTo("Ada King");
-        assertThat(repository.findPerson(79L).getName()).isNull();
-        assertThat(repository.findPerson(79L).getParents()).extracting(Person::getId).containsExactly(42L);
+        assertThat(stored(42L).getName()).isEqualTo("Ada King");
+        assertThat(stored(79L).getName()).isNull();
+        assertThat(stored(79L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
     @Test
@@ -126,11 +127,16 @@ class PersonServiceTest {
         List<PersonDTO> matches = service.addPerson(partner);
 
         assertThat(matches).isEmpty();
-        assertThat(repository.findPerson(79L).getParents()).extracting(Person::getId).containsExactly(42L);
+        assertThat(stored(79L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
     private static Clock clockOn(int year, int month, int day) {
         return Clock.fixed(LocalDate.of(year, month, day).atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC);
+    }
+
+    /** Returns the stored object itself; safe here, because the tests run on a single thread. */
+    private Person stored(long id) {
+        return repository.findPerson(id, Function.identity()).orElse(null);
     }
 
     private static PersonReferenceDTO ref(long id) {

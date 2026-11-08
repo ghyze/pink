@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -87,12 +88,16 @@ public class PersonRepository {
     }
 
     /**
-     * @return the stored person, or {@code null} if this ID is unknown
+     * Finds the stored person with the given ID and converts them with the given mapper, under the read lock. Like
+     * for {@link #findPotentialMatches}, the mapper must return a copy: the stored person must not be used after this
+     * method returns.
+     *
+     * @return the converted person, or empty if this ID is unknown
      */
-    public Person findPerson(long id) {
+    public <T> Optional<T> findPerson(long id, Function<Person, T> mapper) {
         lock.readLock().lock();
         try {
-            return repository.get(id);
+            return Optional.ofNullable(repository.get(id)).map(mapper);
         } finally {
             lock.readLock().unlock();
         }

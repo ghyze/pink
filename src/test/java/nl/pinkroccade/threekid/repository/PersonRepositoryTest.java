@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,15 +24,15 @@ class PersonRepositoryTest {
     // --- find ---
 
     @Test
-    void findPersonReturnsStoredPerson() {
+    void findPersonConvertsStoredPersonWithMapper() {
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(42L).getName()).isEqualTo("Ada");
+        assertThat(repository.findPerson(42L, Person::getName)).contains("Ada");
     }
 
     @Test
-    void findPersonReturnsNullForUnknownId() {
-        assertThat(repository.findPerson(42L)).isNull();
+    void findPersonReturnsEmptyForUnknownId() {
+        assertThat(repository.findPerson(42L, Person::getName)).isEmpty();
     }
 
     // --- storing referenced people ---
@@ -41,7 +42,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada", 1L, 2L, 99L, List.of(77L)));
 
         assertThat(List.of(1L, 2L, 99L, 77L)).allSatisfy(id -> {
-            Person stored = repository.findPerson(id);
+            Person stored = stored(id);
             assertThat(stored).as("person %d", id).isNotNull();
             assertThat(stored.getName()).isNull();
         });
@@ -52,9 +53,9 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(77, "Child", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of(77L)));
 
-        Person child = repository.findPerson(42L).getChildren().iterator().next();
+        Person child = stored(42L).getChildren().iterator().next();
 
-        assertThat(child).isSameAs(repository.findPerson(77L));
+        assertThat(child).isSameAs(stored(77L));
         assertThat(child.getName()).isEqualTo("Child");
     }
 
@@ -65,7 +66,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(1, "Parent", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", 1L, null, null, List.of()));
 
-        assertThat(repository.findPerson(1L).getChildren()).extracting(Person::getId).containsExactly(42L);
+        assertThat(stored(1L).getChildren()).extracting(Person::getId).containsExactly(42L);
     }
 
     @Test
@@ -73,7 +74,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(77, "Child", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of(77L)));
 
-        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactly(42L);
+        assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
     @Test
@@ -81,7 +82,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(99, "Partner", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of()));
 
-        assertThat(repository.findPerson(99L).getPartner().getId()).isEqualTo(42L);
+        assertThat(stored(99L).getPartner().getId()).isEqualTo(42L);
     }
 
     @Test
@@ -89,8 +90,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of()));
         repository.addOrUpdate(person(43, "Other", null, null, 99L, List.of()));
 
-        assertThat(repository.findPerson(99L).getPartner().getId()).isEqualTo(43L);
-        assertThat(repository.findPerson(42L).getPartner()).isNull();
+        assertThat(stored(99L).getPartner().getId()).isEqualTo(43L);
+        assertThat(stored(42L).getPartner()).isNull();
     }
 
     // --- updates ---
@@ -100,7 +101,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada Lovelace", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada King", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(42L).getName()).isEqualTo("Ada King");
+        assertThat(stored(42L).getName()).isEqualTo("Ada King");
     }
 
     @Test
@@ -108,30 +109,30 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of(77L, 78L)));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of(77L)));
 
-        assertThat(repository.findPerson(42L).getChildren()).extracting(Person::getId).containsExactly(77L);
-        assertThat(repository.findPerson(78L).getParents()).isEmpty();
-        assertThat(repository.findPerson(99L).getPartner()).isNull();
+        assertThat(stored(42L).getChildren()).extracting(Person::getId).containsExactly(77L);
+        assertThat(stored(78L).getParents()).isEmpty();
+        assertThat(stored(99L).getPartner()).isNull();
     }
 
     @Test
     void updateChangesTheStoredPersonInPlace() {
         repository.addOrUpdate(person(42, "Ada Lovelace", null, null, null, List.of()));
-        Person before = repository.findPerson(42L);
+        Person before = stored(42L);
 
         repository.addOrUpdate(person(42, "Ada King", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(42L)).isSameAs(before);
+        assertThat(stored(42L)).isSameAs(before);
     }
 
     @Test
     void incompletePersonIsCompletedInPlace() {
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of()));
-        Person incomplete = repository.findPerson(99L);
+        Person incomplete = stored(99L);
 
         repository.addOrUpdate(person(99, "Partner", null, null, 42L, List.of()));
 
-        assertThat(repository.findPerson(99L)).isSameAs(incomplete);
-        assertThat(repository.findPerson(42L).getPartner().getName()).isEqualTo("Partner");
+        assertThat(stored(99L)).isSameAs(incomplete);
+        assertThat(stored(42L).getPartner().getName()).isEqualTo("Partner");
     }
 
     @Test
@@ -139,8 +140,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(77, "Child", 42L, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(77L).getParents()).isEmpty();
-        assertThat(repository.findPerson(42L).getChildren()).isEmpty();
+        assertThat(stored(77L).getParents()).isEmpty();
+        assertThat(stored(42L).getChildren()).isEmpty();
     }
 
     @Test
@@ -148,8 +149,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(1, "Parent", null, null, null, List.of(42L)));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(1L).getChildren()).isEmpty();
-        assertThat(repository.findPerson(42L).getParents()).isEmpty();
+        assertThat(stored(1L).getChildren()).isEmpty();
+        assertThat(stored(42L).getParents()).isEmpty();
     }
 
     @Test
@@ -157,8 +158,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(99, "Partner", null, null, 42L, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(99L).getPartner()).isNull();
-        assertThat(repository.findPerson(42L).getPartner()).isNull();
+        assertThat(stored(99L).getPartner()).isNull();
+        assertThat(stored(42L).getPartner()).isNull();
     }
 
     @Test
@@ -166,7 +167,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(77, "Child", 42L, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of(77L)));
 
-        assertThat(repository.findPerson(77L).getParents()).containsExactly(repository.findPerson(42L));
+        assertThat(stored(77L).getParents()).containsExactly(stored(42L));
     }
 
     @Test
@@ -174,8 +175,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(77, "Child", 1L, 2L, null, List.of()));
         repository.addOrUpdate(person(77, "Child", 1L, 3L, null, List.of()));
 
-        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 3L);
-        assertThat(repository.findPerson(2L).getChildren()).isEmpty();
+        assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 3L);
+        assertThat(stored(2L).getChildren()).isEmpty();
     }
 
     @Test
@@ -184,7 +185,7 @@ class PersonRepositoryTest {
 
         repository.addOrUpdate(person(1, "Parent", null, null, null, List.of(77L)));
 
-        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 2L);
     }
 
     @Test
@@ -192,7 +193,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(77, "Child", 42L, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of(77L)));
 
-        Person parent = repository.findPerson(77L).getParents().iterator().next();
+        Person parent = stored(77L).getParents().iterator().next();
 
         assertThat(parent.getName()).isEqualTo("Ada");
     }
@@ -206,8 +207,8 @@ class PersonRepositoryTest {
         assertThatThrownBy(() -> repository.addOrUpdate(person(3, "Third", null, null, null, List.of(77L))))
                 .isInstanceOf(InvalidPersonException.class);
 
-        assertThat(repository.findPerson(3L)).isNull();
-        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(stored(3L)).isNull();
+        assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 2L);
     }
 
     @Test
@@ -218,8 +219,8 @@ class PersonRepositoryTest {
         assertThatThrownBy(() -> repository.addOrUpdate(person(3, "Changed", null, null, null, List.of(77L))))
                 .isInstanceOf(InvalidPersonException.class);
 
-        assertThat(repository.findPerson(3L).getName()).isEqualTo("Third");
-        assertThat(repository.findPerson(99L).getPartner().getId()).isEqualTo(3L);
+        assertThat(stored(3L).getName()).isEqualTo("Third");
+        assertThat(stored(99L).getPartner().getId()).isEqualTo(3L);
     }
 
     // --- potential matches ---
@@ -308,6 +309,11 @@ class PersonRepositoryTest {
         List<String> names = repository.findPotentialMatches(p -> p.getId() == 42L, Person::getName);
 
         assertThat(names).containsExactly("Ada");
+    }
+
+    /** Returns the stored object itself; safe here, because the tests run on a single thread. */
+    private Person stored(long id) {
+        return repository.findPerson(id, Function.identity()).orElse(null);
     }
 
     private List<Long> potentialMatchIds() {

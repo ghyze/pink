@@ -89,7 +89,8 @@ data and returns nothing, the other returns data and changes nothing (command-qu
 The stored `Person` objects must not be read outside the lock: another request could be changing them at the same
 moment. So `findPotentialMatches` takes a filter and a mapper, and runs both under the read lock. The service passes
 the age check as the filter and `PersonDTO::from` as the mapper, and only gets copies back. The repository does not
-need to know about `PersonDTO`.
+need to know about `PersonDTO`. `findPerson` works the same way: it takes a mapper and returns an `Optional` of the
+copy.
 
 Because the command and the query each take the lock separately, another request can be handled in between. The
 response then reflects the state just after this record, possibly including that other request. This is accepted: the
