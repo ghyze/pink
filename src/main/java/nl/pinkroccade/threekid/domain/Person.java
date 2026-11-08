@@ -97,6 +97,16 @@ public class Person {
                 allChildrenHavePartnerAsParent();
     }
 
+    /**
+     * @return whether at least one child is younger than 18 on the given day; a child without a known birth date
+     * does not count, because we cannot tell
+     */
+    public boolean hasChildUnder18(LocalDate today){
+        return children.stream()
+                .map(Person::getBirthDate)
+                .anyMatch(birthDate -> birthDate != null && birthDate.plusYears(18).isAfter(today));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

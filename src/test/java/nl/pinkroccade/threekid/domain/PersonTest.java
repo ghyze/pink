@@ -175,6 +175,44 @@ class PersonTest {
         assertThat(family(3, 2).potentiallyMatches()).isFalse();
     }
 
+    // --- hasChildUnder18 ---
+
+    private static final LocalDate TODAY = LocalDate.of(2026, 11, 8);
+
+    @Test
+    void childOneDayBeforeEighteenthBirthdayIsUnder18() {
+        assertThat(parentOfChildBornOn(TODAY.minusYears(18).plusDays(1)).hasChildUnder18(TODAY)).isTrue();
+    }
+
+    @Test
+    void childOnEighteenthBirthdayIsNotUnder18() {
+        assertThat(parentOfChildBornOn(TODAY.minusYears(18)).hasChildUnder18(TODAY)).isFalse();
+    }
+
+    @Test
+    void childWithoutBirthDateDoesNotCountAsUnder18() {
+        assertThat(parentOfChildBornOn(null).hasChildUnder18(TODAY)).isFalse();
+    }
+
+    @Test
+    void oneChildUnder18IsEnough() {
+        Person parent = parentOfChildBornOn(TODAY.minusYears(30));
+        parent.addChild(new Person(78, "Young", TODAY.minusYears(5), null, null, null, List.of()));
+
+        assertThat(parent.hasChildUnder18(TODAY)).isTrue();
+    }
+
+    @Test
+    void personWithoutChildrenHasNoChildUnder18() {
+        assertThat(new Person(42).hasChildUnder18(TODAY)).isFalse();
+    }
+
+    private static Person parentOfChildBornOn(LocalDate birthDate) {
+        Person parent = new Person(42);
+        parent.addChild(new Person(77, "Child", birthDate, null, null, null, List.of()));
+        return parent;
+    }
+
     /**
      * Builds person 42 with partner 99 and the given number of children; the first {@code withPartner} children
      * also have 99 as parent.
