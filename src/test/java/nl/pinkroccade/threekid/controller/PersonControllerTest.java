@@ -60,7 +60,7 @@ class PersonControllerTest {
 
     @Test
     void returns200WithMatchingPeople() throws Exception {
-        when(personService.addPerson(any())).thenReturn(List.of(ADA));
+        when(personService.addPerson(any())).thenReturn(List.of(ADA.toPerson()));
 
         mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(ADA_JSON))
                 .andExpect(status().isOk())

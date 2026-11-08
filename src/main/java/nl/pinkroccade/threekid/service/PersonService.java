@@ -1,5 +1,6 @@
 package nl.pinkroccade.threekid.service;
 
+import nl.pinkroccade.threekid.domain.Person;
 import nl.pinkroccade.threekid.dto.PersonDTO;
 import nl.pinkroccade.threekid.repository.PersonRepository;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ public class PersonService {
      *
      * @return the matching people; empty if nobody matches
      */
-    public List<PersonDTO> addPerson(PersonDTO person) {
+    public List<Person> addPerson(PersonDTO person) {
         // TODO store the person and evaluate the pattern
         return List.of();
     }

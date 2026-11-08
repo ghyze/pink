@@ -1,5 +1,6 @@
 package nl.pinkroccade.threekid.controller;
 
+import nl.pinkroccade.threekid.domain.Person;
 import nl.pinkroccade.threekid.dto.PersonDTO;
 import nl.pinkroccade.threekid.service.PersonService;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +25,8 @@ public class PersonController {
     }
 
     @PostMapping
-    public ResponseEntity<List<PersonDTO>> addPerson(@RequestBody PersonDTO person) {
-        List<PersonDTO> matches = personService.addPerson(person);
+    public ResponseEntity<List<Person>> addPerson(@RequestBody PersonDTO person) {
+        List<Person> matches = personService.addPerson(person);
         if (matches.isEmpty()) {
             return ResponseEntity.status(NO_RESPONSE).build();
         }

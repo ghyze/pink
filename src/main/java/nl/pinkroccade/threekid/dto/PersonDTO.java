@@ -1,5 +1,7 @@
 package nl.pinkroccade.threekid.dto;
 
+import nl.pinkroccade.threekid.domain.Person;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -16,4 +18,8 @@ public record PersonDTO(
         PersonReferenceDTO partner,
         List<PersonReferenceDTO> children
 ) {
+
+    public Person toPerson(){
+        return new Person(id, name, birthDate, parent1.toPerson(), parent2.toPerson(), partner.toPerson(), children.stream().map(PersonReferenceDTO::toPerson).toList());
+    }
 }

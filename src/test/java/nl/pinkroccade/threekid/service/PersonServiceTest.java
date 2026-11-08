@@ -1,5 +1,6 @@
 package nl.pinkroccade.threekid.service;
 
+import nl.pinkroccade.threekid.domain.Person;
 import nl.pinkroccade.threekid.dto.PersonDTO;
 import nl.pinkroccade.threekid.dto.PersonReferenceDTO;
 import nl.pinkroccade.threekid.repository.PersonRepository;
@@ -43,7 +44,7 @@ class PersonServiceTest {
                 ref(1L), ref(2L), ref(99L),
                 List.of(ref(77L), ref(78L)));
 
-        List<PersonDTO> matches = service.addPerson(ada);
+        List<Person> matches = service.addPerson(ada);
 
         assertThat(matches).isEmpty();
         // TODO assert that 42 is stored with all its values
@@ -58,7 +59,7 @@ class PersonServiceTest {
                 null, null, ref(42L),
                 List.of(ref(77L), ref(78L)));
 
-        List<PersonDTO> matches = service.addPerson(partner);
+        List<Person> matches = service.addPerson(partner);
 
         assertThat(matches).isEmpty();
         // TODO assert that 99 now has its name and birth date, and is still linked to 42, 77 and 78
@@ -72,7 +73,7 @@ class PersonServiceTest {
                 ref(1L), ref(2L), ref(99L),
                 List.of(ref(77L), ref(78L), ref(79L)));
 
-        List<PersonDTO> matches = service.addPerson(adaAmended);
+        List<Person> matches = service.addPerson(adaAmended);
 
         // TODO decide the expected matches once the three-kid pattern is implemented
         // TODO assert that 42 has its new name, and that 79 exists as an incomplete record
