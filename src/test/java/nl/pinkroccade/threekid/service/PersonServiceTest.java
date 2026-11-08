@@ -47,8 +47,15 @@ class PersonServiceTest {
         List<Person> matches = service.addPerson(ada);
 
         assertThat(matches).isEmpty();
-        // TODO assert that 42 is stored with all its values
-        // TODO assert that 1, 2, 99, 77 and 78 exist as incomplete records (ID only), linked to 42
+        assertThat(PersonDTO.from(repository.findPerson(42L))).isEqualTo(ada);
+        assertThat(List.of(1L, 2L, 99L, 77L, 78L)).allSatisfy(id -> {
+            Person relative = repository.findPerson(id);
+            assertThat(relative.getName()).as("name of %d", id).isNull();
+            assertThat(relative.getBirthDate()).as("birth date of %d", id).isNull();
+        });
+        assertThat(repository.findPerson(1L).getChildren()).extracting(Person::getId).containsExactly(42L);
+        assertThat(repository.findPerson(99L).getPartner().getId()).isEqualTo(42L);
+        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
     @Test
@@ -62,7 +69,12 @@ class PersonServiceTest {
         List<Person> matches = service.addPerson(partner);
 
         assertThat(matches).isEmpty();
-        // TODO assert that 99 now has its name and birth date, and is still linked to 42, 77 and 78
+        Person stored = repository.findPerson(99L);
+        assertThat(stored.getName()).isEqualTo("William King");
+        assertThat(stored.getBirthDate()).isEqualTo(LocalDate.of(1805, 2, 21));
+        assertThat(stored.getPartner().getId()).isEqualTo(42L);
+        assertThat(stored.getChildren()).extracting(Person::getId).containsExactlyInAnyOrder(77L, 78L);
+        assertThat(repository.findPerson(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test
@@ -75,11 +87,39 @@ class PersonServiceTest {
 
         List<Person> matches = service.addPerson(adaAmended);
 
-        // TODO decide the expected matches once the three-kid pattern is implemented
-        // TODO assert that 42 has its new name, and that 79 exists as an incomplete record
+        // 42 has three children now, but 79 does not have partner 99 as parent
+        assertThat(matches).isEmpty();
+        assertThat(repository.findPerson(42L).getName()).isEqualTo("Ada King");
+        assertThat(repository.findPerson(79L).getName()).isNull();
+        assertThat(repository.findPerson(79L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
-    // TODO add further steps, e.g. a record that changes or removes an existing relation
+    @Test
+    @Order(4)
+    void childsOwnRecordCompletesTheFamily() {
+        PersonDTO child = new PersonDTO(
+                79L, "Byron King", LocalDate.of(1836, 5, 12),
+                ref(42L), ref(99L), null,
+                null);
+
+        List<Person> matches = service.addPerson(child);
+
+        assertThat(matches).extracting(Person::getId).containsExactly(42L, 99L);
+    }
+
+    @Test
+    @Order(5)
+    void recordThatNoLongerMentionsAChildBreaksTheFamily() {
+        PersonDTO partner = new PersonDTO(
+                99L, "William King", LocalDate.of(1805, 2, 21),
+                null, null, ref(42L),
+                List.of(ref(77L), ref(78L)));
+
+        List<Person> matches = service.addPerson(partner);
+
+        assertThat(matches).isEmpty();
+        assertThat(repository.findPerson(79L).getParents()).extracting(Person::getId).containsExactly(42L);
+    }
 
     private static PersonReferenceDTO ref(long id) {
         return new PersonReferenceDTO(id);
