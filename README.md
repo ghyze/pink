@@ -48,3 +48,17 @@ to repeat (part of) the setup, and the setup grows with every step in the scenar
 Another alternative is a single `@TestFactory` that returns a stream of `DynamicTest`s. This keeps the whole scenario
 in one method, but `@BeforeEach` and `@AfterEach` do not run per step, and the steps cannot be selected individually
 in the IDE.
+
+## Person
+### Relations as sets
+`Person` uses `Set`s for parents and children, because these should be unique. A person can be referred to by an
+incomplete record (only the ID) and later by a complete record, and both should count as the same person. That is why
+`equals` and `hashCode` only use the `id`. They do not use the relations: those point back to each other (a parent
+refers to the child, the child to the parent), which would cause endless recursion. The partner is a single reference.
+
+Alternatives:
+- A `List` with explicit duplicate checks. This gives the same result with more code.
+- Two fields `parent1` and `parent2`, as in the API. This suggests an order that has no meaning, and checking for
+  duplicates and free places is more awkward.
+- Store relations as IDs instead of object references, and look people up in the repository when needed. This avoids
+  outdated incomplete objects and recursion when converting to JSON, at the cost of a lookup for every relation.
