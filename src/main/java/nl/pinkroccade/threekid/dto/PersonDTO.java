@@ -65,16 +65,12 @@ public record PersonDTO(
 
     /**
      * Converts this record to a {@link Person}. This is where {@code null} from the JSON stops: values that are left
-     * out are not set, and relations that are left out are not added.
+     * out stay unknown, and relations that are left out are not added.
      */
     public Person toPerson(){
         Person person = new Person(id);
-        if (name != null) {
-            person.setName(name);
-        }
-        if (birthDate != null) {
-            person.setBirthDate(birthDate);
-        }
+        person.setName(name);
+        person.setBirthDate(birthDate);
         Stream.of(parent1, parent2)
                 .filter(Objects::nonNull)
                 .map(PersonReferenceDTO::toPerson)

@@ -83,10 +83,6 @@ public class Person {
         this.partner = partner;
     }
 
-    public void clearPartner(){
-        this.partner = null;
-    }
-
     public void addChild(Person child){
         Objects.requireNonNull(child);
         children.remove(child);
@@ -126,10 +122,10 @@ public class Person {
     }
 
     private boolean allChildrenHavePartnerAsParent(){
-        return children.stream().filter(c -> c.hasParent(partner)).count() == children.size();
+        return children.stream().allMatch(child -> child.hasParent(partner));
     }
 
     private boolean hasParent(Person parent){
-        return parents.stream().anyMatch(p -> p.equals(parent));
+        return parents.contains(parent);
     }
 }

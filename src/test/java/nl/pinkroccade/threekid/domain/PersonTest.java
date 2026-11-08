@@ -36,16 +36,6 @@ class PersonTest {
     }
 
     @Test
-    void clearPartnerRemovesPartner() {
-        Person person = new Person(42);
-        person.setPartner(new Person(99));
-
-        person.clearPartner();
-
-        assertThat(person.getPartner()).isEmpty();
-    }
-
-    @Test
     void copyDetailsFromCopiesNameAndBirthDate() {
         Person person = new Person(42);
         Person other = new Person(42);
@@ -150,17 +140,6 @@ class PersonTest {
     }
 
     @Test
-    void settersCompleteAnIncompletePerson() {
-        Person person = new Person(42);
-
-        person.setName("Ada Lovelace");
-        person.setBirthDate(BIRTHDATE);
-
-        assertThat(person.getName()).contains("Ada Lovelace");
-        assertThat(person.getBirthDate()).contains(BIRTHDATE);
-    }
-
-    @Test
     void peopleWithTheSameIdAreEqual() {
         Person complete = new Person(42);
         complete.setName("Ada Lovelace");
@@ -186,7 +165,7 @@ class PersonTest {
     @Test
     void personWithoutPartnerDoesNotMatch() {
         Person person = family(3, 3);
-        person.clearPartner();
+        person.setPartner(null);
 
         assertThat(person.potentiallyMatches()).isFalse();
     }

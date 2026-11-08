@@ -275,8 +275,8 @@ and the domain, and behind them:
   `Person`, and `findPerson` of the repository;
 - relations that are unknown are empty sets, never `null`;
 - the setters for name, birth date and partner do accept `null`, which makes the value unknown again. A value can be
-  incorrect as well as unknown, and then it must be possible to delete it. `clearPartner` does the same for the
-  partner, and the repository copies name and birth date, known or not, with `copyDetailsFrom`;
+  incorrect as well as unknown, and then it must be possible to delete it. The repository copies name and birth date,
+  known or not, with `copyDetailsFrom`;
 - `addParent` and `addChild` do not accept `null` and throw a `NullPointerException`: "no parent" is not a parent.
   A relation is removed with `removeParent` or `removeChild`;
 - inside `Person`, the fields for name, birth date and partner may be `null`, but that is a private detail.

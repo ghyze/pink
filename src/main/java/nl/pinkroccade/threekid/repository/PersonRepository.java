@@ -166,15 +166,15 @@ public class PersonRepository {
 
     /** Makes the two people each other's partner, and releases the previous partner of both. */
     private void linkPartners(Person person, Person partner) {
-        person.getPartner().filter(old -> !old.equals(partner)).ifPresent(Person::clearPartner);
-        partner.getPartner().filter(old -> !old.equals(person)).ifPresent(Person::clearPartner);
+        person.getPartner().filter(old -> !old.equals(partner)).ifPresent(old -> old.setPartner(null));
+        partner.getPartner().filter(old -> !old.equals(person)).ifPresent(old -> old.setPartner(null));
         person.setPartner(partner);
         partner.setPartner(person);
     }
 
     /** Ends the partnership of the person on both sides, if they have one. */
     private void unlinkPartner(Person person) {
-        person.getPartner().ifPresent(Person::clearPartner);
-        person.clearPartner();
+        person.getPartner().ifPresent(old -> old.setPartner(null));
+        person.setPartner(null);
     }
 }
