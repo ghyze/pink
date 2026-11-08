@@ -11,6 +11,16 @@ parent.
 
 Phase 1 of the assignment is implemented; phase 2 (deleting and ignoring IDs) is not.
 
+## Assumptions and functional decisions
+- On incorrect input, reply with an HTTP 400 response.
+- A record that would corrupt the data (for example a third parent for a child) gets an HTTP 400 response.
+- Do not check birthdate for plausibility. We will allow parents to be younger than their children, and trust that this
+  will be corrected.
+- Accept all long values as valid ID.
+- Minimum and maximum IDs are Long.MIN_VALUE and Long.MAX_VALUE.
+- We will return _all_ matching Person records, not limited to those in the request.
+- We will not persist records to disk. When the application shuts down, the records are gone. Persistence adds complexity.
+
 ## Requirements
 - Java 25
 - Maven is not needed: the Maven wrapper (`mvnw`) downloads the right version.
@@ -60,7 +70,7 @@ Only `id` is required. A relation that is left out means the person has no such 
 |---|---|
 | `200 OK` | At least one person matches. The body is a list of all matching people, in the same format as the request. |
 | `444 No Response` | Nobody matches. The body is empty. |
-| `400 Bad Request` | The record is invalid: no ID, a reference without an ID, a person referring to themselves, or a third parent for a child. Nothing is stored. |
+| `400 Bad Request` | The record is invalid: invalid JSON or an invalid date, no ID, a reference without an ID, a person referring to themselves, or a third parent for a child. Nothing is stored. |
 
 ## Code structure
 | Package | Contents |
@@ -118,6 +128,10 @@ For example: child 77 says 42 is a parent, and later the record of 42 arrives wi
 relation between 42 and 77 is broken on both sides. The same goes for parents and the partner. When a person chooses
 a new partner, the previous partner of both people is released. A relation that is left out of the JSON therefore
 means "none", not "unknown".
+
+This also applies to a child's own record. If a child has two parents, and a record for that child arrives without
+parents, we assume the new record is correct and both parent relations are removed: perhaps the previous record was
+incorrect and the parents are unknown. This is the same as what happens to a partner who is left out.
 
 An alternative is to only add relations, and never break relations that other records established. Then no
 information is lost when a record is incomplete, but a person can never be released from an incorrect relation.
@@ -186,7 +200,6 @@ Alternatives:
   extra type that mostly duplicates `PersonDTO`.
 - Make the sets in `Person` thread-safe. This prevents exceptions, but a person could still be read halfway through an
   update.
-
 
 ## PersonServiceTest
 `PersonServiceTest` is one scenario: a series of ordered unit tests that offer Person records to the same
@@ -327,3 +340,9 @@ Alternatives:
   assignment does not clearly ask for it.
 - Return `Person` directly. This needs no conversion, but makes the internal model part of the API, and needs Jackson
   annotations to stop the recursion.
+
+## Wrapping up
+- Time spent is about 3 hours, not in one stretch but fragmented.
+- Claude Code is used in building this challenge. Some code has been manually created/updated, some has been created 
+  by Claude Code.
+- All code has been reviewed by me.
