@@ -1,0 +1,6 @@
+services:
+  threekid:
+    build: .
+    image: threekid
+    ports:
+      - "8080:8080"
