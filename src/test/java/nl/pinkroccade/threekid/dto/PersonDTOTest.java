@@ -63,6 +63,25 @@ class PersonDTOTest {
     }
 
     @Test
+    void personWhoIsTheirOwnParentIsRejected() {
+        assertThatThrownBy(() -> new PersonDTO(42L, "Ada Lovelace", BIRTHDATE, ref(1L), ref(42L), null, null))
+                .isInstanceOf(InvalidPersonException.class);
+    }
+
+    @Test
+    void personWhoIsTheirOwnPartnerIsRejected() {
+        assertThatThrownBy(() -> new PersonDTO(42L, "Ada Lovelace", BIRTHDATE, null, null, ref(42L), null))
+                .isInstanceOf(InvalidPersonException.class);
+    }
+
+    @Test
+    void personWhoIsTheirOwnChildIsRejected() {
+        assertThatThrownBy(() -> new PersonDTO(42L, "Ada Lovelace", BIRTHDATE, null, null, null,
+                List.of(ref(77L), ref(42L))))
+                .isInstanceOf(InvalidPersonException.class);
+    }
+
+    @Test
     void personWithoutIdIsRejected() {
         assertThatThrownBy(() -> new PersonDTO(null, "Ada Lovelace", BIRTHDATE, null, null, null, null))
                 .isInstanceOf(InvalidPersonException.class);

@@ -138,6 +138,18 @@ class PersonControllerTest {
     }
 
     @Test
+    void returns400WhenPersonRefersToThemselves() throws Exception {
+        String selfReference = """
+                { "id": 42, "partner": { "id": 42 } }
+                """;
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(selfReference))
+                .andExpect(status().isBadRequest());
+
+        verify(personService, never()).addPerson(any());
+    }
+
+    @Test
     void returns400WhenPersonIsInvalid() throws Exception {
         when(personService.addPerson(any())).thenThrow(new InvalidPersonException("third parent"));
 

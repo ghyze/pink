@@ -73,6 +73,9 @@ is not known. But a reference that is present must have an ID: `"parent1": {}`, 
 `null` entry in the list of children are rejected with `400 Bad Request`. Ignoring them instead would hide an error in
 the request.
 
+A person cannot be their own parent, partner or child either. A record that refers to its own ID in one of those
+relations is rejected with `400 Bad Request` as well.
+
 An alternative is Bean Validation (`@NotNull` with `@Valid` on the controller). This is the standard Spring approach
 and gives detailed error messages, but needs an extra dependency for a single check.
 

@@ -29,6 +29,14 @@ public record PersonDTO(
         if (children != null && children.stream().anyMatch(Objects::isNull)) {
             throw new InvalidPersonException("The list of children cannot contain null.");
         }
+        if (refersTo(parent1, id) || refersTo(parent2, id) || refersTo(partner, id)
+                || (children != null && children.stream().anyMatch(child -> refersTo(child, id)))) {
+            throw new InvalidPersonException("Person " + id + " cannot be their own parent, partner or child.");
+        }
+    }
+
+    private static boolean refersTo(PersonReferenceDTO reference, Long id) {
+        return reference != null && reference.id().equals(id);
     }
 
     /**
