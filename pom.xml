@@ -11,21 +11,8 @@
 	<groupId>nl.pinkroccade</groupId>
 	<artifactId>threekid</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>threekid</name>
+	<description>Three-Kid Family Challenge: finds people with a partner and three children, one of them under 18</description>
 	<properties>
 		<java.version>25</java.version>
 	</properties>
