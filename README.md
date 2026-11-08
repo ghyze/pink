@@ -207,9 +207,9 @@ record without an ID with an `InvalidPersonException`, and the API answers with 
 constructor of `PersonDTO`, so an invalid `PersonDTO` can never exist.
 
 The same goes for references to other people. A relation may be left out of the JSON (or be `null`), which means the
-person has no such relation (see "Updates replace all relations"). But a reference that is present must have an ID: `"parent1": {}`, `"parent1": { "id": null }` and a
-`null` entry in the list of children are rejected with `400 Bad Request`. Ignoring them instead would hide an error in
-the request.
+person has no such relation (see "Updates replace all relations"). But a reference that is present must have an ID:
+`"parent1": {}`, `"parent1": { "id": null }` and a `null` entry in the list of children are rejected with
+`400 Bad Request`. Ignoring them instead would hide an error in the request.
 
 A person cannot be their own parent, partner or child either. A record that refers to its own ID in one of those
 relations is rejected with `400 Bad Request` as well.
