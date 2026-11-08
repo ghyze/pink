@@ -3,29 +3,22 @@ package nl.pinkroccade.threekid.domain;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 
+/**
+ * A person and their relations. A person can be incomplete: we may only know their ID, because someone else referred
+ * to them. Values we don't know are returned as an empty {@link Optional}; relations we don't know are empty sets.
+ * {@code null} is never accepted or returned.
+ */
 public class Person {
     private final long id;
     private String name;
     private LocalDate birthDate;
-    private Set<Person> parents = new HashSet<>();
+    private final Set<Person> parents = new HashSet<>();
     private Person partner;
-    private Set<Person> children = new HashSet<>();
-
-    public Person(long id, String name, LocalDate birthDate, Person parent1, Person parent2, Person partner, List<Person> children) {
-        this.id = id;
-        this.name = name;
-        this.birthDate = birthDate;
-        parents.addAll(Stream.of(parent1, parent2).filter(Objects::nonNull).toList());
-        this.partner = partner;
-        if (children != null) {
-            this.children.addAll(children);
-        }
-    }
+    private final Set<Person> children = new HashSet<>();
 
     public Person(long id){
         this.id = id;
@@ -35,20 +28,20 @@ public class Person {
         return id;
     }
 
-    public String getName(){
-        return name;
+    public Optional<String> getName(){
+        return Optional.ofNullable(name);
     }
 
-    public LocalDate getBirthDate(){
-        return birthDate;
+    public Optional<LocalDate> getBirthDate(){
+        return Optional.ofNullable(birthDate);
     }
 
     public Collection<Person> getParents(){
         return Set.copyOf(parents);
     }
 
-    public Person getPartner(){
-        return partner;
+    public Optional<Person> getPartner(){
+        return Optional.ofNullable(partner);
     }
 
     public Collection<Person> getChildren(){
@@ -56,17 +49,24 @@ public class Person {
     }
 
     public void setName(String name){
-        this.name = name;
+        this.name = Objects.requireNonNull(name);
     }
 
     public void setBirthDate(LocalDate birthDate){
-        this.birthDate = birthDate;
+        this.birthDate = Objects.requireNonNull(birthDate);
+    }
+
+    /**
+     * Replaces the name and birth date with those of the given person, including values the given person does not
+     * have: those become unknown.
+     */
+    public void copyDetailsFrom(Person other){
+        this.name = other.name;
+        this.birthDate = other.birthDate;
     }
 
     public void addParent(Person parent){
-        if (parent == null){
-            return;
-        }
+        Objects.requireNonNull(parent);
         if (parents.size() == 2 && parents.stream().noneMatch(p -> p.getId() == parent.getId())){
             throw new InvalidPersonException("Person " + id + " already has two different parents. Cannot add parent " + parent.getId() + ".");
         }
@@ -79,10 +79,15 @@ public class Person {
     }
 
     public void setPartner(Person partner){
-        this.partner = partner;
+        this.partner = Objects.requireNonNull(partner);
+    }
+
+    public void clearPartner(){
+        this.partner = null;
     }
 
     public void addChild(Person child){
+        Objects.requireNonNull(child);
         children.remove(child);
         children.add(child);
     }
@@ -103,8 +108,8 @@ public class Person {
      */
     public boolean hasChildUnder18(LocalDate today){
         return children.stream()
-                .map(Person::getBirthDate)
-                .anyMatch(birthDate -> birthDate != null && birthDate.plusYears(18).isAfter(today));
+                .flatMap(child -> child.getBirthDate().stream())
+                .anyMatch(birthDate -> birthDate.plusYears(18).isAfter(today));
     }
 
     @Override

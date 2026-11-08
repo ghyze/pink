@@ -55,11 +55,11 @@ class PersonServiceTest {
         assertThat(PersonDTO.from(stored(42L))).isEqualTo(ada);
         assertThat(List.of(1L, 2L, 99L, 77L, 78L)).allSatisfy(id -> {
             Person relative = stored(id);
-            assertThat(relative.getName()).as("name of %d", id).isNull();
-            assertThat(relative.getBirthDate()).as("birth date of %d", id).isNull();
+            assertThat(relative.getName()).as("name of %d", id).isEmpty();
+            assertThat(relative.getBirthDate()).as("birth date of %d", id).isEmpty();
         });
         assertThat(stored(1L).getChildren()).extracting(Person::getId).containsExactly(42L);
-        assertThat(stored(99L).getPartner().getId()).isEqualTo(42L);
+        assertThat(stored(99L).getPartner()).map(Person::getId).contains(42L);
         assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 
@@ -75,9 +75,9 @@ class PersonServiceTest {
 
         assertThat(matches).isEmpty();
         Person stored = stored(99L);
-        assertThat(stored.getName()).isEqualTo("William King");
-        assertThat(stored.getBirthDate()).isEqualTo(LocalDate.of(1805, 2, 21));
-        assertThat(stored.getPartner().getId()).isEqualTo(42L);
+        assertThat(stored.getName()).contains("William King");
+        assertThat(stored.getBirthDate()).contains(LocalDate.of(1805, 2, 21));
+        assertThat(stored.getPartner()).map(Person::getId).contains(42L);
         assertThat(stored.getChildren()).extracting(Person::getId).containsExactlyInAnyOrder(77L, 78L);
         assertThat(stored(77L).getParents()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
@@ -94,8 +94,8 @@ class PersonServiceTest {
 
         // 42 has three children now, but 79 does not have partner 99 as parent
         assertThat(matches).isEmpty();
-        assertThat(stored(42L).getName()).isEqualTo("Ada King");
-        assertThat(stored(79L).getName()).isNull();
+        assertThat(stored(42L).getName()).contains("Ada King");
+        assertThat(stored(79L).getName()).isEmpty();
         assertThat(stored(79L).getParents()).extracting(Person::getId).containsExactly(42L);
     }
 

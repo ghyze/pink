@@ -23,10 +23,10 @@ class PersonDTOTest {
         Person person = dto.toPerson();
 
         assertThat(person.getId()).isEqualTo(42);
-        assertThat(person.getName()).isEqualTo("Ada Lovelace");
-        assertThat(person.getBirthDate()).isEqualTo(BIRTHDATE);
+        assertThat(person.getName()).contains("Ada Lovelace");
+        assertThat(person.getBirthDate()).contains(BIRTHDATE);
         assertThat(person.getParents()).extracting(Person::getId).containsExactlyInAnyOrder(1L, 2L);
-        assertThat(person.getPartner().getId()).isEqualTo(99);
+        assertThat(person.getPartner()).map(Person::getId).contains(99L);
         assertThat(person.getChildren()).extracting(Person::getId).containsExactlyInAnyOrder(77L, 78L);
     }
 
@@ -35,10 +35,10 @@ class PersonDTOTest {
         PersonDTO dto = new PersonDTO(42L, "Ada Lovelace", BIRTHDATE,
                 null, null, ref(99L), List.of());
 
-        Person partner = dto.toPerson().getPartner();
+        Person partner = dto.toPerson().getPartner().orElseThrow();
 
-        assertThat(partner.getName()).isNull();
-        assertThat(partner.getBirthDate()).isNull();
+        assertThat(partner.getName()).isEmpty();
+        assertThat(partner.getBirthDate()).isEmpty();
     }
 
     /** JSON in which parents, partner and children are left out. */
@@ -49,7 +49,7 @@ class PersonDTOTest {
         Person person = dto.toPerson();
 
         assertThat(person.getParents()).isEmpty();
-        assertThat(person.getPartner()).isNull();
+        assertThat(person.getPartner()).isEmpty();
         assertThat(person.getChildren()).isEmpty();
     }
 
@@ -92,7 +92,7 @@ class PersonDTOTest {
         Person person = ref(7L).toPerson();
 
         assertThat(person.getId()).isEqualTo(7);
-        assertThat(person.getName()).isNull();
+        assertThat(person.getName()).isEmpty();
     }
 
     /** JSON such as {@code "parent1": {}} or {@code "parent1": { "id": null }}. */
@@ -104,8 +104,13 @@ class PersonDTOTest {
 
     @Test
     void fromConvertsAllValuesWithRelationsSortedById() {
-        Person person = new Person(42, "Ada Lovelace", BIRTHDATE, new Person(2), new Person(1), new Person(99),
-                List.of(new Person(79), new Person(77), new Person(78)));
+        Person person = new Person(42);
+        person.setName("Ada Lovelace");
+        person.setBirthDate(BIRTHDATE);
+        person.addParent(new Person(2));
+        person.addParent(new Person(1));
+        person.setPartner(new Person(99));
+        List.of(79L, 77L, 78L).forEach(id -> person.addChild(new Person(id)));
 
         PersonDTO dto = PersonDTO.from(person);
 

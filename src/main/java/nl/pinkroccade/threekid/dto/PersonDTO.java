@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * Person record as received on and returned from the API.
@@ -46,11 +47,11 @@ public record PersonDTO(
     public static PersonDTO from(Person person) {
         List<PersonReferenceDTO> parents = toReferences(person.getParents());
         return new PersonDTO(person.getId(),
-                person.getName(),
-                person.getBirthDate(),
+                person.getName().orElse(null),
+                person.getBirthDate().orElse(null),
                 parents.size() > 0 ? parents.get(0) : null,
                 parents.size() > 1 ? parents.get(1) : null,
-                person.getPartner() == null ? null : new PersonReferenceDTO(person.getPartner().getId()),
+                person.getPartner().map(partner -> new PersonReferenceDTO(partner.getId())).orElse(null),
                 toReferences(person.getChildren()));
     }
 
@@ -62,17 +63,28 @@ public record PersonDTO(
                 .toList();
     }
 
+    /**
+     * Converts this record to a {@link Person}. This is where {@code null} from the JSON stops: values that are left
+     * out are not set, and relations that are left out are not added.
+     */
     public Person toPerson(){
-        return new Person(id,
-                name,
-                birthDate,
-                toPerson(parent1),
-                toPerson(parent2),
-                toPerson(partner),
-                children == null? List.of() : children.stream().map(PersonReferenceDTO::toPerson).toList());
-    }
-
-    private Person toPerson(PersonReferenceDTO reference){
-        return reference == null ? null : reference.toPerson();
+        Person person = new Person(id);
+        if (name != null) {
+            person.setName(name);
+        }
+        if (birthDate != null) {
+            person.setBirthDate(birthDate);
+        }
+        Stream.of(parent1, parent2)
+                .filter(Objects::nonNull)
+                .map(PersonReferenceDTO::toPerson)
+                .forEach(person::addParent);
+        if (partner != null) {
+            person.setPartner(partner.toPerson());
+        }
+        if (children != null) {
+            children.stream().map(PersonReferenceDTO::toPerson).forEach(person::addChild);
+        }
+        return person;
     }
 }

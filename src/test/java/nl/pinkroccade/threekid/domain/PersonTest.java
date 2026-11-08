@@ -3,7 +3,6 @@ package nl.pinkroccade.threekid.domain;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,43 +12,61 @@ class PersonTest {
     private static final LocalDate BIRTHDATE = LocalDate.of(1815, 12, 10);
 
     @Test
-    void constructorStoresAllValues() {
-        Person parent1 = new Person(1);
-        Person parent2 = new Person(2);
-        Person partner = new Person(99);
-        Person child = new Person(77);
+    void settersRejectNull() {
+        Person person = new Person(42);
 
-        Person person = new Person(42, "Ada Lovelace", BIRTHDATE, parent1, parent2, partner, List.of(child));
-
-        assertThat(person.getId()).isEqualTo(42);
-        assertThat(person.getName()).isEqualTo("Ada Lovelace");
-        assertThat(person.getBirthDate()).isEqualTo(BIRTHDATE);
-        assertThat(person.getParents()).containsExactlyInAnyOrder(parent1, parent2);
-        assertThat(person.getPartner()).isSameAs(partner);
-        assertThat(person.getChildren()).containsExactly(child);
+        assertThatThrownBy(() -> person.setName(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> person.setBirthDate(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> person.setPartner(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> person.addParent(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> person.addChild(null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
-    void constructorIgnoresMissingParents() {
-        Person parent1 = new Person(1);
+    void clearPartnerRemovesPartner() {
+        Person person = new Person(42);
+        person.setPartner(new Person(99));
 
-        Person person = new Person(42, "Ada Lovelace", BIRTHDATE, parent1, null, null, List.of());
+        person.clearPartner();
 
-        assertThat(person.getParents()).containsExactly(parent1);
+        assertThat(person.getPartner()).isEmpty();
     }
 
     @Test
-    void constructorWithoutParentsGivesNoParents() {
-        Person person = new Person(42, "Ada Lovelace", BIRTHDATE, null, null, null, List.of());
+    void copyDetailsFromCopiesNameAndBirthDate() {
+        Person person = new Person(42);
+        Person other = new Person(42);
+        other.setName("Ada Lovelace");
+        other.setBirthDate(BIRTHDATE);
 
-        assertThat(person.getParents()).isEmpty();
+        person.copyDetailsFrom(other);
+
+        assertThat(person.getName()).contains("Ada Lovelace");
+        assertThat(person.getBirthDate()).contains(BIRTHDATE);
     }
 
     @Test
-    void constructorAcceptsMissingChildren() {
-        Person person = new Person(42, "Ada Lovelace", BIRTHDATE, null, null, null, null);
+    void copyDetailsFromMakesMissingValuesUnknown() {
+        Person person = new Person(42);
+        person.setName("Ada Lovelace");
+        person.setBirthDate(BIRTHDATE);
 
-        assertThat(person.getChildren()).isEmpty();
+        person.copyDetailsFrom(new Person(42));
+
+        assertThat(person.getName()).isEmpty();
+        assertThat(person.getBirthDate()).isEmpty();
+    }
+
+    @Test
+    void copyDetailsFromLeavesRelationsAlone() {
+        Person person = new Person(42);
+        person.setPartner(new Person(99));
+        person.addChild(new Person(77));
+
+        person.copyDetailsFrom(new Person(42));
+
+        assertThat(person.getPartner()).map(Person::getId).contains(99L);
+        assertThat(person.getChildren()).extracting(Person::getId).containsExactly(77L);
     }
 
     @Test
@@ -57,10 +74,10 @@ class PersonTest {
         Person person = new Person(42);
 
         assertThat(person.getId()).isEqualTo(42);
-        assertThat(person.getName()).isNull();
-        assertThat(person.getBirthDate()).isNull();
+        assertThat(person.getName()).isEmpty();
+        assertThat(person.getBirthDate()).isEmpty();
         assertThat(person.getParents()).isEmpty();
-        assertThat(person.getPartner()).isNull();
+        assertThat(person.getPartner()).isEmpty();
         assertThat(person.getChildren()).isEmpty();
     }
 
@@ -116,7 +133,7 @@ class PersonTest {
 
         person.setPartner(newPartner);
 
-        assertThat(person.getPartner()).isSameAs(newPartner);
+        assertThat(person.getPartner()).containsSame(newPartner);
     }
 
     @Test
@@ -126,13 +143,14 @@ class PersonTest {
         person.setName("Ada Lovelace");
         person.setBirthDate(BIRTHDATE);
 
-        assertThat(person.getName()).isEqualTo("Ada Lovelace");
-        assertThat(person.getBirthDate()).isEqualTo(BIRTHDATE);
+        assertThat(person.getName()).contains("Ada Lovelace");
+        assertThat(person.getBirthDate()).contains(BIRTHDATE);
     }
 
     @Test
     void peopleWithTheSameIdAreEqual() {
-        Person complete = new Person(42, "Ada Lovelace", BIRTHDATE, null, null, null, List.of());
+        Person complete = new Person(42);
+        complete.setName("Ada Lovelace");
         Person incomplete = new Person(42);
 
         assertThat(complete).isEqualTo(incomplete).hasSameHashCodeAs(incomplete);
@@ -155,7 +173,7 @@ class PersonTest {
     @Test
     void personWithoutPartnerDoesNotMatch() {
         Person person = family(3, 3);
-        person.setPartner(null);
+        person.clearPartner();
 
         assertThat(person.potentiallyMatches()).isFalse();
     }
@@ -197,7 +215,7 @@ class PersonTest {
     @Test
     void oneChildUnder18IsEnough() {
         Person parent = parentOfChildBornOn(TODAY.minusYears(30));
-        parent.addChild(new Person(78, "Young", TODAY.minusYears(5), null, null, null, List.of()));
+        parent.addChild(personBornOn(78, TODAY.minusYears(5)));
 
         assertThat(parent.hasChildUnder18(TODAY)).isTrue();
     }
@@ -209,8 +227,16 @@ class PersonTest {
 
     private static Person parentOfChildBornOn(LocalDate birthDate) {
         Person parent = new Person(42);
-        parent.addChild(new Person(77, "Child", birthDate, null, null, null, List.of()));
+        parent.addChild(personBornOn(77, birthDate));
         return parent;
+    }
+
+    private static Person personBornOn(long id, LocalDate birthDate) {
+        Person person = new Person(id);
+        if (birthDate != null) {
+            person.setBirthDate(birthDate);
+        }
+        return person;
     }
 
     /**

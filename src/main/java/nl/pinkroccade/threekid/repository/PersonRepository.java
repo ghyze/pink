@@ -44,22 +44,19 @@ public class PersonRepository {
             validate(person);
 
             Person stored = getOrCreate(person.getId());
-            Person partner = person.getPartner() == null ? null : getOrCreate(person.getPartner().getId());
+            Optional<Person> partner = person.getPartner().map(p -> getOrCreate(p.getId()));
 
             // Everyone whose partner, children or children's parents can change: the person, their old and new
             // relations, and the partner that the new partner leaves behind.
             Set<Person> affected = new HashSet<>();
             affected.add(stored);
             affected.addAll(relationsOf(stored));
-            if (partner != null && partner.getPartner() != null) {
-                affected.add(partner.getPartner());
-            }
+            partner.flatMap(Person::getPartner).ifPresent(affected::add);
 
-            stored.setName(person.getName());
-            stored.setBirthDate(person.getBirthDate());
+            stored.copyDetailsFrom(person);
             replaceParents(stored, resolve(person.getParents()));
             replaceChildren(stored, resolve(person.getChildren()));
-            replacePartner(stored, partner);
+            partner.ifPresentOrElse(p -> linkPartners(stored, p), () -> unlinkPartner(stored));
 
             affected.addAll(relationsOf(stored));
             affected.forEach(this::updatePotentialMatch);
@@ -121,9 +118,7 @@ public class PersonRepository {
     private static Set<Person> relationsOf(Person person) {
         Set<Person> relations = new HashSet<>(person.getParents());
         relations.addAll(person.getChildren());
-        if (person.getPartner() != null) {
-            relations.add(person.getPartner());
-        }
+        person.getPartner().ifPresent(relations::add);
         return relations;
     }
 
@@ -169,18 +164,17 @@ public class PersonRepository {
         }
     }
 
-    private void replacePartner(Person person, Person partner) {
-        Person oldPartner = person.getPartner();
-        if (oldPartner != null && !oldPartner.equals(partner)) {
-            oldPartner.setPartner(null);
-        }
+    /** Makes the two people each other's partner, and releases the previous partner of both. */
+    private void linkPartners(Person person, Person partner) {
+        person.getPartner().filter(old -> !old.equals(partner)).ifPresent(Person::clearPartner);
+        partner.getPartner().filter(old -> !old.equals(person)).ifPresent(Person::clearPartner);
         person.setPartner(partner);
-        if (partner != null) {
-            Person partnersOldPartner = partner.getPartner();
-            if (partnersOldPartner != null && !partnersOldPartner.equals(person)) {
-                partnersOldPartner.setPartner(null);
-            }
-            partner.setPartner(person);
-        }
+        partner.setPartner(person);
+    }
+
+    /** Ends the partnership of the person on both sides, if they have one. */
+    private void unlinkPartner(Person person) {
+        person.getPartner().ifPresent(Person::clearPartner);
+        person.clearPartner();
     }
 }

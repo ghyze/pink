@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,12 +29,12 @@ class PersonRepositoryTest {
     void findPersonConvertsStoredPersonWithMapper() {
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of()));
 
-        assertThat(repository.findPerson(42L, Person::getName)).contains("Ada");
+        assertThat(repository.findPerson(42L, p -> p.getName().orElseThrow())).contains("Ada");
     }
 
     @Test
     void findPersonReturnsEmptyForUnknownId() {
-        assertThat(repository.findPerson(42L, Person::getName)).isEmpty();
+        assertThat(repository.findPerson(42L, Person::getId)).isEmpty();
     }
 
     // --- storing referenced people ---
@@ -44,7 +46,7 @@ class PersonRepositoryTest {
         assertThat(List.of(1L, 2L, 99L, 77L)).allSatisfy(id -> {
             Person stored = stored(id);
             assertThat(stored).as("person %d", id).isNotNull();
-            assertThat(stored.getName()).isNull();
+            assertThat(stored.getName()).isEmpty();
         });
     }
 
@@ -56,7 +58,7 @@ class PersonRepositoryTest {
         Person child = stored(42L).getChildren().iterator().next();
 
         assertThat(child).isSameAs(stored(77L));
-        assertThat(child.getName()).isEqualTo("Child");
+        assertThat(child.getName()).contains("Child");
     }
 
     // --- bidirectional integrity ---
@@ -82,7 +84,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(99, "Partner", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of()));
 
-        assertThat(stored(99L).getPartner().getId()).isEqualTo(42L);
+        assertThat(stored(99L).getPartner()).map(Person::getId).contains(42L);
     }
 
     @Test
@@ -90,8 +92,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of()));
         repository.addOrUpdate(person(43, "Other", null, null, 99L, List.of()));
 
-        assertThat(stored(99L).getPartner().getId()).isEqualTo(43L);
-        assertThat(stored(42L).getPartner()).isNull();
+        assertThat(stored(99L).getPartner()).map(Person::getId).contains(43L);
+        assertThat(stored(42L).getPartner()).isEmpty();
     }
 
     // --- updates ---
@@ -101,7 +103,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada Lovelace", null, null, null, List.of()));
         repository.addOrUpdate(person(42, "Ada King", null, null, null, List.of()));
 
-        assertThat(stored(42L).getName()).isEqualTo("Ada King");
+        assertThat(stored(42L).getName()).contains("Ada King");
     }
 
     @Test
@@ -111,7 +113,7 @@ class PersonRepositoryTest {
 
         assertThat(stored(42L).getChildren()).extracting(Person::getId).containsExactly(77L);
         assertThat(stored(78L).getParents()).isEmpty();
-        assertThat(stored(99L).getPartner()).isNull();
+        assertThat(stored(99L).getPartner()).isEmpty();
     }
 
     @Test
@@ -132,7 +134,7 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(99, "Partner", null, null, 42L, List.of()));
 
         assertThat(stored(99L)).isSameAs(incomplete);
-        assertThat(stored(42L).getPartner().getName()).isEqualTo("Partner");
+        assertThat(stored(42L).getPartner().flatMap(Person::getName)).contains("Partner");
     }
 
     @Test
@@ -158,8 +160,8 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(99, "Partner", null, null, 42L, List.of()));
         repository.addOrUpdate(person(42, "Ada", null, null, null, List.of()));
 
-        assertThat(stored(99L).getPartner()).isNull();
-        assertThat(stored(42L).getPartner()).isNull();
+        assertThat(stored(99L).getPartner()).isEmpty();
+        assertThat(stored(42L).getPartner()).isEmpty();
     }
 
     @Test
@@ -195,7 +197,7 @@ class PersonRepositoryTest {
 
         Person parent = stored(77L).getParents().iterator().next();
 
-        assertThat(parent.getName()).isEqualTo("Ada");
+        assertThat(parent.getName()).contains("Ada");
     }
 
     // --- third parent ---
@@ -219,8 +221,8 @@ class PersonRepositoryTest {
         assertThatThrownBy(() -> repository.addOrUpdate(person(3, "Changed", null, null, null, List.of(77L))))
                 .isInstanceOf(InvalidPersonException.class);
 
-        assertThat(stored(3L).getName()).isEqualTo("Third");
-        assertThat(stored(99L).getPartner().getId()).isEqualTo(3L);
+        assertThat(stored(3L).getName()).contains("Third");
+        assertThat(stored(99L).getPartner()).map(Person::getId).contains(3L);
     }
 
     // --- potential matches ---
@@ -306,7 +308,7 @@ class PersonRepositoryTest {
     void findPotentialMatchesAppliesFilterAndMapper() {
         addFamily();
 
-        List<String> names = repository.findPotentialMatches(p -> p.getId() == 42L, Person::getName);
+        List<String> names = repository.findPotentialMatches(p -> p.getId() == 42L, p -> p.getName().orElseThrow());
 
         assertThat(names).containsExactly("Ada");
     }
@@ -328,10 +330,14 @@ class PersonRepositoryTest {
 
     /** Builds a person as {@code PersonDTO.toPerson()} does: relations are incomplete people with only an ID. */
     private static Person person(long id, String name, Long parent1, Long parent2, Long partner, List<Long> children) {
-        return new Person(id, name, LocalDate.of(1990, 1, 1),
-                parent1 == null ? null : new Person(parent1),
-                parent2 == null ? null : new Person(parent2),
-                partner == null ? null : new Person(partner),
-                children.stream().map(Person::new).toList());
+        Person person = new Person(id);
+        person.setName(name);
+        person.setBirthDate(LocalDate.of(1990, 1, 1));
+        Stream.of(parent1, parent2).filter(Objects::nonNull).map(Person::new).forEach(person::addParent);
+        if (partner != null) {
+            person.setPartner(new Person(partner));
+        }
+        children.stream().map(Person::new).forEach(person::addChild);
+        return person;
     }
 }
