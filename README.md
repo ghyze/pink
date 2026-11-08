@@ -21,6 +21,33 @@ cost of extra complexity in setup, configuration and testing.
 Another alternative would be to persist all valid incoming requests in order, as an append-only log, and replay them
 on startup. This also gives an audit trail of all changes, but adds complexity and increases startup time.
 
+### One object per person
+The repository keeps exactly one `Person` object per ID. When a record refers to someone we don't know yet, an
+incomplete person (only the ID) is stored. When that person's own record arrives later, the stored object is updated
+in place, instead of being replaced by a new object. All relations point to the stored objects, so whoever follows a
+relation sees the latest data, including the birth dates the pattern needs.
+
+An alternative is to replace the stored object on every update. This is simpler, but every person that refers to the
+old object has to be pointed to the new one, and it is easy to miss one.
+
+### Updates replace all relations (autorepair)
+The assignment requires bidirectional integrity: if A says B is a child, B must list A as a parent. The repository
+repairs this automatically: storing A also adds A to B's parents, and the same goes for parents and partners.
+
+A record replaces all relations of that person, including relations that earlier records of other people established.
+For example: child 77 says 42 is a parent, and later the record of 42 arrives without 77 in its children. Then the
+relation between 42 and 77 is broken on both sides. The same goes for parents and the partner. When a person chooses
+a new partner, the previous partner of both people is released. A relation that is left out of the JSON therefore
+means "none", not "unknown".
+
+An alternative is to only add relations, and never break relations that other records established. Then no
+information is lost when a record is incomplete, but a person can never be released from an incorrect relation.
+
+### Check first, then change
+An update changes several people at once. If it could fail halfway, the data would be left half updated, and undoing
+those changes is complex. So `addOrUpdate` first checks everything that can fail (a third parent), and only changes
+data after that. A rejected record changes nothing.
+
 
 ## PersonServiceTest
 `PersonServiceTest` is one scenario: a series of ordered unit tests that offer Person records to the same
@@ -83,7 +110,7 @@ and gives detailed error messages, but needs an extra dependency for a single ch
 If a child (Person A) already has two parents (Person B and Person C), and a record arrives that adds a third parent
 (Person D), an `InvalidPersonException` is thrown, and the API answers with `400 Bad Request`. There is no way to
 determine which one of the existing parents should be replaced, so the request is considered incorrect. The whole
-record is rejected, which means the repository has to check this before it changes anything.
+record is rejected, and nothing is changed (see "Check first, then change").
 
 An alternative is "last record wins": replace one of the existing parents with the new one. This never rejects a
 request, but there is no rule for which parent to replace, and data would be lost without notice.

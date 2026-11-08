@@ -74,6 +74,10 @@ public class Person {
         parents.add(parent);
     }
 
+    public void removeParent(Person parent){
+        parents.remove(parent);
+    }
+
     public void setPartner(Person partner){
         this.partner = partner;
     }
@@ -81,6 +85,10 @@ public class Person {
     public void addChild(Person child){
         children.remove(child);
         children.add(child);
+    }
+
+    public void removeChild(Person child){
+        children.remove(child);
     }
 
     @Override

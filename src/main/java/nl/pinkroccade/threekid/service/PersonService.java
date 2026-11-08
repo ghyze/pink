@@ -23,6 +23,7 @@ public class PersonService {
      */
     public List<Person> addPerson(PersonDTO person) {
         // TODO store the person and evaluate the pattern
+        // Before storing, validate if it can be stored. We don't want rollbacks.
         return List.of();
     }
 }
