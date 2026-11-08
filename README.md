@@ -342,7 +342,7 @@ Alternatives:
   annotations to stop the recursion.
 
 ## Wrapping up
-- Time spent is about 3 hours, not in one stretch but fragmented.
-- Claude Code is used in building this challenge. Some code has been manually created/updated, some has been created 
+- Time spent is about 4 hours, not in one stretch but fragmented.
+- Claude Code was used in building this challenge. Some code has been manually created/updated, some has been created 
   by Claude Code.
 - All code has been reviewed by me.
