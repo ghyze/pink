@@ -10,7 +10,8 @@ import java.util.Set;
 /**
  * A person and their relations. A person can be incomplete: we may only know their ID, because someone else referred
  * to them. Values we don't know are returned as an empty {@link Optional}; relations we don't know are empty sets.
- * {@code null} is never accepted or returned.
+ * {@code null} is never returned. The setters for name, birth date and partner accept {@code null} to make an
+ * incorrect value unknown again; {@code addParent} and {@code addChild} do not accept {@code null}.
  */
 public class Person {
     private final long id;
@@ -49,11 +50,11 @@ public class Person {
     }
 
     public void setName(String name){
-        this.name = Objects.requireNonNull(name);
+        this.name = name;
     }
 
     public void setBirthDate(LocalDate birthDate){
-        this.birthDate = Objects.requireNonNull(birthDate);
+        this.birthDate = birthDate;
     }
 
     /**
@@ -79,7 +80,7 @@ public class Person {
     }
 
     public void setPartner(Person partner){
-        this.partner = Objects.requireNonNull(partner);
+        this.partner = partner;
     }
 
     public void clearPartner(){

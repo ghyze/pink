@@ -12,12 +12,25 @@ class PersonTest {
     private static final LocalDate BIRTHDATE = LocalDate.of(1815, 12, 10);
 
     @Test
-    void settersRejectNull() {
+    void settersWithNullMakeAnIncorrectValueUnknownAgain() {
+        Person person = new Person(42);
+        person.setName("Ada Lovelace");
+        person.setBirthDate(BIRTHDATE);
+        person.setPartner(new Person(99));
+
+        person.setName(null);
+        person.setBirthDate(null);
+        person.setPartner(null);
+
+        assertThat(person.getName()).isEmpty();
+        assertThat(person.getBirthDate()).isEmpty();
+        assertThat(person.getPartner()).isEmpty();
+    }
+
+    @Test
+    void addingANullRelationIsRejected() {
         Person person = new Person(42);
 
-        assertThatThrownBy(() -> person.setName(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> person.setBirthDate(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> person.setPartner(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> person.addParent(null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> person.addChild(null)).isInstanceOf(NullPointerException.class);
     }

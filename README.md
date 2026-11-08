@@ -254,16 +254,18 @@ Alternatives:
 - Store relations as IDs instead of object references, and look people up in the repository when needed. This avoids
   outdated incomplete objects and recursion when converting to JSON, at the cost of a lookup for every relation.
 
-### No `null` outside the DTOs
-`null` only exists at the edge of the system: in `PersonDTO` and `PersonReferenceDTO`, because a value that is left
-out of the JSON arrives as `null`. `PersonDTO.toPerson()` and `PersonDTO.from()` convert between `null` and the domain,
-and everything behind them does without:
+### `null` and `Optional`
+`null` is never returned outside the DTOs. In `PersonDTO` and `PersonReferenceDTO` it is unavoidable, because a value
+that is left out of the JSON arrives as `null`. `PersonDTO.toPerson()` and `PersonDTO.from()` convert between the JSON
+and the domain, and behind them:
 - a value that can be unknown is returned as an `Optional`: `getName()`, `getBirthDate()` and `getPartner()` of
   `Person`, and `findPerson` of the repository;
 - relations that are unknown are empty sets, never `null`;
-- methods do not accept `null`. Setters and `addParent`/`addChild` throw a `NullPointerException` on `null`, ending a
-  partnership has its own method (`clearPartner`), and the repository copies name and birth date, known or not, with
-  `copyDetailsFrom`;
+- the setters for name, birth date and partner do accept `null`, which makes the value unknown again. A value can be
+  incorrect as well as unknown, and then it must be possible to delete it. `clearPartner` does the same for the
+  partner, and the repository copies name and birth date, known or not, with `copyDetailsFrom`;
+- `addParent` and `addChild` do not accept `null` and throw a `NullPointerException`: "no parent" is not a parent.
+  A relation is removed with `removeParent` or `removeChild`;
 - inside `Person`, the fields for name, birth date and partner may be `null`, but that is a private detail.
 
 `Optional` is used for return values only, which is what it was designed for. It is not used for fields, parameters
