@@ -55,8 +55,10 @@ means reading it.
 
 A person's status only depends on their partner, their children, and the parents of those children. So after an
 update, only these people are checked again: the person in the record, their parents, children and partner from before
-and after the update, and the person that the new partner leaves behind. Nobody else's status can change. The work
-per request is therefore constant, no matter how many people are stored.
+and after the update, and the person that the new partner leaves behind. Nobody else's status can change. Keeping the
+list up to date therefore takes the same amount of work per request, no matter how many people are stored. Answering a
+request does take longer as the number of potential matches grows, because each of them gets the age check and is
+converted for the response; that cannot be avoided, because the response has to contain all matches.
 
 The age check ("at least one child under 18") is not part of the potential matches. A child's age changes over time
 without any new record arriving, so a stored result would go out of date. The age check is done on the potential
@@ -147,13 +149,13 @@ Alternatives:
 - Store relations as IDs instead of object references, and look people up in the repository when needed. This avoids
   outdated incomplete objects and recursion when converting to JSON, at the cost of a lookup for every relation.
 
-### Missing ID
+### Invalid records
 Every person record must have an ID; without it, the record cannot be stored or referred to. `PersonDTO` rejects a
 record without an ID with an `InvalidPersonException`, and the API answers with `400 Bad Request`. The check is in the
 constructor of `PersonDTO`, so an invalid `PersonDTO` can never exist.
 
-The same goes for references to other people. A relation may be left out of the JSON (or be `null`), which means it
-is not known. But a reference that is present must have an ID: `"parent1": {}`, `"parent1": { "id": null }` and a
+The same goes for references to other people. A relation may be left out of the JSON (or be `null`), which means the
+person has no such relation (see "Updates replace all relations"). But a reference that is present must have an ID: `"parent1": {}`, `"parent1": { "id": null }` and a
 `null` entry in the list of children are rejected with `400 Bad Request`. Ignoring them instead would hide an error in
 the request.
 
@@ -161,7 +163,8 @@ A person cannot be their own parent, partner or child either. A record that refe
 relations is rejected with `400 Bad Request` as well.
 
 An alternative is Bean Validation (`@NotNull` with `@Valid` on the controller). This is the standard Spring approach
-and gives detailed error messages, but needs an extra dependency for a single check.
+and gives detailed error messages, but needs an extra dependency, and the self-reference check would still need custom
+code.
 
 ### Third parent
 If a child (Person A) already has two parents (Person B and Person C), and a record arrives that adds a third parent
@@ -179,8 +182,8 @@ with everything we know about the matching people (you might not know their name
 The response is a list with one record per matching person, in the same format as the request (`PersonDTO`). Each
 record contains everything we know about that person: ID, name, birth date, parents, partner and children. Related
 people are given as ID references (`{ "id": 77 }`), not as full records. A value we don't know yet is `null`, and a
-person without known children has an empty list. Parents and children are sorted by ID, so the same data always gives
-the same response.
+person without known children has an empty list. Within each record, parents and children are sorted by ID, so the
+same person always looks the same. The order of the matching people in the list has no meaning.
 
 The stored `Person` objects are converted with `PersonDTO.from` (under the repository's read lock, see "Command and
 query"), instead of being returned directly.
