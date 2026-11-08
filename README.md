@@ -47,6 +47,27 @@ An update changes several people at once. If it could fail halfway, the data wou
 those changes is complex. So `addOrUpdate` first checks everything that can fail (a third parent), and only changes
 data after that. A rejected record changes nothing.
 
+### Potential matches
+After each record, the service has to answer whether anyone stored matches the pattern. Instead of checking everyone
+on every request, the repository keeps a list of potential matches: people who have a partner and exactly three
+children who all have that partner as a parent. The list is updated during `addOrUpdate`, so finding the matches only
+means reading it.
+
+A person's status only depends on their partner, their children, and the parents of those children. So after an
+update, only these people are checked again: the person in the record, their parents, children and partner from before
+and after the update, and the person that the new partner leaves behind. Nobody else's status can change. The work
+per request is therefore constant, no matter how many people are stored.
+
+The age check ("at least one child under 18") is not part of the potential matches. A child's age changes over time
+without any new record arriving, so a stored result would go out of date. The age check is done on the potential
+matches when a request is answered.
+
+Alternatives:
+- Check everyone on every request. This is simpler and always correct, but the work grows with the number of people
+  stored, and the assignment evaluates performance under load.
+- Only check the person in the record. This is cheap, but misses matches: a child's record can make their parents
+  match, and a partner's record can make the other partner stop matching.
+
 ### Locking
 All reads and writes go through a `ReentrantReadWriteLock`. An update changes several people, and nobody should see it
 half done; the `HashSet`s in `Person` are not thread-safe either. A read/write lock lets several reads run at the same

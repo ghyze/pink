@@ -5,7 +5,10 @@ import nl.pinkroccade.threekid.domain.Person;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -22,6 +25,7 @@ import java.util.stream.Collectors;
 public class PersonRepository {
 
     private final Map<Long, Person> repository = new HashMap<>();
+    private final Map<Long, Person> potentialMatches = new HashMap<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
@@ -38,13 +42,41 @@ public class PersonRepository {
             validate(person);
 
             Person stored = getOrCreate(person.getId());
+            Person partner = person.getPartner() == null ? null : getOrCreate(person.getPartner().getId());
+
+            // Everyone whose partner, children or children's parents can change: the person, their old and new
+            // relations, and the partner that the new partner leaves behind.
+            Set<Person> affected = new HashSet<>();
+            affected.add(stored);
+            affected.addAll(relationsOf(stored));
+            if (partner != null && partner.getPartner() != null) {
+                affected.add(partner.getPartner());
+            }
+
             stored.setName(person.getName());
             stored.setBirthDate(person.getBirthDate());
             replaceParents(stored, resolve(person.getParents()));
             replaceChildren(stored, resolve(person.getChildren()));
-            replacePartner(stored, person.getPartner() == null ? null : getOrCreate(person.getPartner().getId()));
+            replacePartner(stored, partner);
+
+            affected.addAll(relationsOf(stored));
+            affected.forEach(this::updatePotentialMatch);
         } finally {
             lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * @return everyone who currently matches the pattern without the age check, sorted by ID
+     */
+    public List<Person> findPotentialMatches() {
+        lock.readLock().lock();
+        try {
+            return potentialMatches.values().stream()
+                    .sorted(Comparator.comparingLong(Person::getId))
+                    .toList();
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
@@ -72,6 +104,23 @@ public class PersonRepository {
                 throw new InvalidPersonException("Person " + child.getId()
                         + " already has two different parents. Cannot add parent " + person.getId() + ".");
             }
+        }
+    }
+
+    private static Set<Person> relationsOf(Person person) {
+        Set<Person> relations = new HashSet<>(person.getParents());
+        relations.addAll(person.getChildren());
+        if (person.getPartner() != null) {
+            relations.add(person.getPartner());
+        }
+        return relations;
+    }
+
+    private void updatePotentialMatch(Person person) {
+        if (person.potentiallyMatches()) {
+            potentialMatches.put(person.getId(), person);
+        } else {
+            potentialMatches.remove(person.getId());
         }
     }
 

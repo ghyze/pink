@@ -222,6 +222,91 @@ class PersonRepositoryTest {
         assertThat(repository.findPerson(99L).getPartner().getId()).isEqualTo(3L);
     }
 
+    // --- potential matches ---
+
+    @Test
+    void nobodyPotentiallyMatchesInAnEmptyRepository() {
+        assertThat(repository.findPotentialMatches()).isEmpty();
+    }
+
+    @Test
+    void bothParentsPotentiallyMatchWhenTheyListTheSameThreeChildren() {
+        addFamily();
+
+        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactly(42L, 99L);
+    }
+
+    @Test
+    void personListingThreeChildrenThatAreNotThePartnersDoesNotMatch() {
+        repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of(77L, 78L, 79L)));
+
+        assertThat(repository.findPotentialMatches()).isEmpty();
+    }
+
+    @Test
+    void childsOwnRecordCanCompleteTheMatch() {
+        repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of(77L, 78L, 79L)));
+        repository.addOrUpdate(person(77, "Child", 42L, 99L, null, List.of()));
+        repository.addOrUpdate(person(78, "Child", 42L, 99L, null, List.of()));
+        assertThat(repository.findPotentialMatches()).isEmpty();
+
+        repository.addOrUpdate(person(79, "Child", 42L, 99L, null, List.of()));
+
+        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactly(42L, 99L);
+    }
+
+    @Test
+    void matchIsRemovedWhenAChildDropsTheParent() {
+        addFamily();
+
+        repository.addOrUpdate(person(79, "Child", 42L, null, null, List.of()));
+
+        assertThat(repository.findPotentialMatches()).isEmpty();
+    }
+
+    @Test
+    void matchIsRemovedWhenAFourthChildIsAdded() {
+        addFamily();
+
+        repository.addOrUpdate(person(80, "Child", 42L, 99L, null, List.of()));
+
+        assertThat(repository.findPotentialMatches()).isEmpty();
+    }
+
+    @Test
+    void matchIsRemovedWhenThePartnerChoosesSomeoneElse() {
+        addFamily();
+
+        repository.addOrUpdate(person(99, "Partner", null, null, 43L, List.of(77L, 78L, 79L)));
+
+        assertThat(repository.findPotentialMatches()).isEmpty();
+    }
+
+    @Test
+    void matchIsRemovedWhenSomeoneElseTakesThePartner() {
+        addFamily();
+
+        repository.addOrUpdate(person(43, "Other", null, null, 99L, List.of()));
+
+        assertThat(repository.findPotentialMatches()).isEmpty();
+    }
+
+    @Test
+    void rejectedRecordDoesNotChangeThePotentialMatches() {
+        addFamily();
+
+        assertThatThrownBy(() -> repository.addOrUpdate(person(3, "Third", null, null, null, List.of(77L))))
+                .isInstanceOf(InvalidPersonException.class);
+
+        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactly(42L, 99L);
+    }
+
+    /** 42 and 99 are partners with three children: 77, 78 and 79. */
+    private void addFamily() {
+        repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of(77L, 78L, 79L)));
+        repository.addOrUpdate(person(99, "Partner", null, null, 42L, List.of(77L, 78L, 79L)));
+    }
+
     /** Builds a person as {@code PersonDTO.toPerson()} does: relations are incomplete people with only an ID. */
     private static Person person(long id, String name, Long parent1, Long parent2, Long partner, List<Long> children) {
         return new Person(id, name, LocalDate.of(1990, 1, 1),
