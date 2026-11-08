@@ -6,8 +6,7 @@ The name `Repository` indicates data storage. As long as the public methods of t
 data is stored does not matter to the users of the class. This means we don't have to add persistent data storage yet,
 but we can still do that later if needed.
 
-`PersonRepository` keeps all people in memory, in a `ConcurrentHashMap` keyed by ID. A `ConcurrentHashMap` is used
-instead of a `HashMap` because requests are handled on several threads at once. Keeping the data in memory also helps
+`PersonRepository` keeps all people in memory, in a `HashMap` keyed by ID. Keeping the data in memory helps
 performance: there are no network calls or conversions between objects and database rows, and looking up a person by
 ID takes constant time.
 
@@ -47,6 +46,15 @@ information is lost when a record is incomplete, but a person can never be relea
 An update changes several people at once. If it could fail halfway, the data would be left half updated, and undoing
 those changes is complex. So `addOrUpdate` first checks everything that can fail (a third parent), and only changes
 data after that. A rejected record changes nothing.
+
+### Locking
+All reads and writes go through a `ReentrantReadWriteLock`. An update changes several people, and nobody should see it
+half done; the `HashSet`s in `Person` are not thread-safe either. A read/write lock lets several reads run at the same
+time, while a write has the repository to itself. Because all access is under the lock, a plain `HashMap` is enough.
+
+The downside is that writes are handled one at a time. Alternatives are a lock per person (more concurrency, but the
+people in one update have to be locked in a fixed order to avoid deadlocks), or immutable `Person` objects that are
+replaced as a whole (no locks for reading, but every update has to copy all related people).
 
 
 ## PersonServiceTest

@@ -5,18 +5,24 @@ import nl.pinkroccade.threekid.domain.Person;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
  * Keeps one {@link Person} object per ID, and keeps the relations between people bidirectional.
+ * <p>
+ * All access goes through a read/write lock: an update changes several people at once, and nobody may see it
+ * half done.
  */
 @Repository
 public class PersonRepository {
 
-    private final Map<Long, Person> repository = new ConcurrentHashMap<>();
+    private final Map<Long, Person> repository = new HashMap<>();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
      * Stores the given person, or updates the stored person with the same ID in place. The record replaces all
@@ -27,21 +33,31 @@ public class PersonRepository {
      * @throws InvalidPersonException if the record would give one of its children a third parent; nothing is changed
      */
     public void addOrUpdate(Person person) {
-        validate(person);
+        lock.writeLock().lock();
+        try {
+            validate(person);
 
-        Person stored = getOrCreate(person.getId());
-        stored.setName(person.getName());
-        stored.setBirthDate(person.getBirthDate());
-        replaceParents(stored, resolve(person.getParents()));
-        replaceChildren(stored, resolve(person.getChildren()));
-        replacePartner(stored, person.getPartner() == null ? null : getOrCreate(person.getPartner().getId()));
+            Person stored = getOrCreate(person.getId());
+            stored.setName(person.getName());
+            stored.setBirthDate(person.getBirthDate());
+            replaceParents(stored, resolve(person.getParents()));
+            replaceChildren(stored, resolve(person.getChildren()));
+            replacePartner(stored, person.getPartner() == null ? null : getOrCreate(person.getPartner().getId()));
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     /**
      * @return the stored person, or {@code null} if this ID is unknown
      */
     public Person findPerson(long id) {
-        return repository.get(id);
+        lock.readLock().lock();
+        try {
+            return repository.get(id);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /** Checks everything that could fail, before anything is changed. */
