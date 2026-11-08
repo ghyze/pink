@@ -1,0 +1,11 @@
+# Only the Maven wrapper, pom.xml and src/ are needed to build the image
+target/
+.git/
+.idea/
+.vscode/
+*.iml
+Challenge/
+HELP.md
+README.md
+Dockerfile
+.dockerignore
