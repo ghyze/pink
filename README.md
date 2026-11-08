@@ -1,4 +1,56 @@
+# Three-Kid Family Challenge
+A Spring Boot service that receives person records one at a time, and after each record answers whether anyone stored
+matches this pattern:
+1. has a partner;
+2. has exactly 3 children, and all 3 have that same partner as a parent;
+3. at least one of those children is under 18.
 
+Records may refer to parents, partners and children that have not been seen yet. Sending a record with a known ID
+updates that person. The relations between people are kept bidirectional: if A lists B as a child, B gets A as a
+parent.
+
+Phase 1 of the assignment is implemented; phase 2 (deleting and ignoring IDs) is not.
+
+## Requirements
+- Java 25
+- Maven is not needed: the Maven wrapper (`mvnw`) downloads the right version.
+
+## Build, test and run
+```shell
+./mvnw test             # run all tests
+./mvnw spring-boot:run  # start the service on http://localhost:8080
+```
+On Windows, use `mvnw.cmd` instead of `./mvnw`.
+
+## API
+`POST /api/v1/people` with one person record:
+```json
+{
+  "id": 42,
+  "name": "Ada Lovelace",
+  "birthDate": "1815-12-10",
+  "parent1": { "id": 1 },
+  "parent2": { "id": 2 },
+  "partner": { "id": 99 },
+  "children": [{ "id": 77 }, { "id": 78 }]
+}
+```
+Only `id` is required. A relation that is left out means the person has no such relation.
+
+| Status | Meaning |
+|---|---|
+| `200 OK` | At least one person matches. The body is a list of all matching people, in the same format as the request. |
+| `444 No Response` | Nobody matches. The body is empty. |
+| `400 Bad Request` | The record is invalid: no ID, a reference without an ID, a person referring to themselves, or a third parent for a child. Nothing is stored. |
+
+## Code structure
+| Package | Contents |
+|---|---|
+| `controller` | `PersonController` (the endpoint) and `ApiExceptionHandler` (invalid records become `400`) |
+| `dto` | `PersonDTO` and `PersonReferenceDTO`: the JSON format, with validation and conversion from and to `Person` |
+| `service` | `PersonService`: stores the record and returns the matches, including the age check |
+| `repository` | `PersonRepository`: in-memory storage, bidirectional relations and the list of potential matches |
+| `domain` | `Person` and `InvalidPersonException` |
 
 # Architecture and design decisions
 ## PersonRepository
