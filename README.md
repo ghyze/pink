@@ -201,6 +201,28 @@ Alternatives:
 - Store relations as IDs instead of object references, and look people up in the repository when needed. This avoids
   outdated incomplete objects and recursion when converting to JSON, at the cost of a lookup for every relation.
 
+### No `null` outside the DTOs
+`null` only exists at the edge of the system: in `PersonDTO` and `PersonReferenceDTO`, because a value that is left
+out of the JSON arrives as `null`. `PersonDTO.toPerson()` and `PersonDTO.from()` convert between `null` and the domain,
+and everything behind them does without:
+- a value that can be unknown is returned as an `Optional`: `getName()`, `getBirthDate()` and `getPartner()` of
+  `Person`, and `findPerson` of the repository;
+- relations that are unknown are empty sets, never `null`;
+- methods do not accept `null`. Setters and `addParent`/`addChild` throw a `NullPointerException` on `null`, ending a
+  partnership has its own method (`clearPartner`), and the repository copies name and birth date, known or not, with
+  `copyDetailsFrom`;
+- inside `Person`, the fields for name, birth date and partner may be `null`, but that is a private detail.
+
+`Optional` is used for return values only, which is what it was designed for. It is not used for fields, parameters
+or record components: there it adds wrapping without making anything safer, and Jackson needs extra support to read
+and write it.
+
+Alternatives:
+- Keep `null` everywhere and document which values may be `null`. This is less code, but the compiler does not help:
+  a forgotten check only shows up as a `NullPointerException` at runtime.
+- Use `Optional` everywhere, including fields, parameters and the DTOs. This makes absence visible in every signature,
+  but goes against how `Optional` is meant to be used, and makes the DTOs harder to map to JSON.
+
 ### Invalid records
 Every person record must have an ID; without it, the record cannot be stored or referred to. `PersonDTO` rejects a
 record without an ID with an `InvalidPersonException`, and the API answers with `400 Bad Request`. The check is in the
