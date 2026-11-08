@@ -62,3 +62,25 @@ Alternatives:
   duplicates and free places is more awkward.
 - Store relations as IDs instead of object references, and look people up in the repository when needed. This avoids
   outdated incomplete objects and recursion when converting to JSON, at the cost of a lookup for every relation.
+
+### Missing ID
+Every person record must have an ID; without it, the record cannot be stored or referred to. `PersonDTO` rejects a
+record without an ID with an `InvalidPersonException`, and the API answers with `400 Bad Request`. The check is in the
+constructor of `PersonDTO`, so an invalid `PersonDTO` can never exist.
+
+The same goes for references to other people. A relation may be left out of the JSON (or be `null`), which means it
+is not known. But a reference that is present must have an ID: `"parent1": {}`, `"parent1": { "id": null }` and a
+`null` entry in the list of children are rejected with `400 Bad Request`. Ignoring them instead would hide an error in
+the request.
+
+An alternative is Bean Validation (`@NotNull` with `@Valid` on the controller). This is the standard Spring approach
+and gives detailed error messages, but needs an extra dependency for a single check.
+
+### Third parent
+If a child (Person A) already has two parents (Person B and Person C), and a record arrives that adds a third parent
+(Person D), an `InvalidPersonException` is thrown, and the API answers with `400 Bad Request`. There is no way to
+determine which one of the existing parents should be replaced, so the request is considered incorrect. The whole
+record is rejected, which means the repository has to check this before it changes anything.
+
+An alternative is "last record wins": replace one of the existing parents with the new one. This never rejects a
+request, but there is no rule for which parent to replace, and data would be lost without notice.

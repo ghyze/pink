@@ -1,5 +1,6 @@
 package nl.pinkroccade.threekid.controller;
 
+import nl.pinkroccade.threekid.domain.InvalidPersonException;
 import nl.pinkroccade.threekid.dto.PersonDTO;
 import nl.pinkroccade.threekid.dto.PersonReferenceDTO;
 import nl.pinkroccade.threekid.service.PersonService;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -68,5 +70,64 @@ class PersonControllerTest {
                 .andExpect(jsonPath("$[0].birthDate").value("1815-12-10"))
                 .andExpect(jsonPath("$[0].partner.id").value(99))
                 .andExpect(jsonPath("$[0].children[1].id").value(78));
+    }
+
+    @Test
+    void returns400WhenIdIsMissing() throws Exception {
+        String withoutId = """
+                { "name": "Ada Lovelace", "birthDate": "1815-12-10" }
+                """;
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(withoutId))
+                .andExpect(status().isBadRequest());
+
+        verify(personService, never()).addPerson(any());
+    }
+
+    @Test
+    void acceptsMissingRelations() throws Exception {
+        when(personService.addPerson(any())).thenReturn(List.of());
+        String withoutRelations = """
+                { "id": 42, "name": "Ada Lovelace", "birthDate": "1815-12-10" }
+                """;
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(withoutRelations))
+                .andExpect(status().is(444));
+
+        verify(personService).addPerson(new PersonDTO(42L, "Ada Lovelace", LocalDate.of(1815, 12, 10),
+                null, null, null, null));
+    }
+
+    @Test
+    void returns400WhenReferenceHasNoId() throws Exception {
+        String referenceWithoutId = """
+                { "id": 42, "parent1": {} }
+                """;
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(referenceWithoutId))
+                .andExpect(status().isBadRequest());
+
+        verify(personService, never()).addPerson(any());
+    }
+
+    @Test
+    void returns400WhenChildIsNull() throws Exception {
+        String nullChild = """
+                { "id": 42, "children": [{ "id": 77 }, null] }
+                """;
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(nullChild))
+                .andExpect(status().isBadRequest());
+
+        verify(personService, never()).addPerson(any());
+    }
+
+    @Test
+    void returns400WhenPersonIsInvalid() throws Exception {
+        when(personService.addPerson(any())).thenThrow(new InvalidPersonException("third parent"));
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(ADA_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("third parent"));
     }
 }
