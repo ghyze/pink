@@ -91,6 +91,12 @@ public class Person {
         children.remove(child);
     }
 
+    public boolean potentiallyMatches(){
+        return this.partner != null &&
+                this.children.size() == 3 &&
+                allChildrenHavePartnerAsParent();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -101,5 +107,13 @@ public class Person {
     @Override
     public int hashCode() {
         return Objects.hashCode(id);
+    }
+
+    private boolean allChildrenHavePartnerAsParent(){
+        return children.stream().filter(c -> c.hasParent(partner)).count() == children.size();
+    }
+
+    private boolean hasParent(Person parent){
+        return parents.stream().anyMatch(p -> p.equals(parent));
     }
 }

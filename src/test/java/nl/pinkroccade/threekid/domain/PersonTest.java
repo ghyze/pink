@@ -143,6 +143,59 @@ class PersonTest {
         assertThat(new Person(42)).isNotEqualTo(new Person(43));
     }
 
+    // --- potentiallyMatches ---
+
+    @Test
+    void personWithPartnerAndThreeChildrenOfThatPartnerPotentiallyMatches() {
+        Person person = family(3, 3);
+
+        assertThat(person.potentiallyMatches()).isTrue();
+    }
+
+    @Test
+    void personWithoutPartnerDoesNotMatch() {
+        Person person = family(3, 3);
+        person.setPartner(null);
+
+        assertThat(person.potentiallyMatches()).isFalse();
+    }
+
+    @Test
+    void personWithTwoChildrenDoesNotMatch() {
+        assertThat(family(2, 2).potentiallyMatches()).isFalse();
+    }
+
+    @Test
+    void personWithFourChildrenDoesNotMatch() {
+        assertThat(family(4, 4).potentiallyMatches()).isFalse();
+    }
+
+    @Test
+    void personWithAChildOfAnotherParentDoesNotMatch() {
+        assertThat(family(3, 2).potentiallyMatches()).isFalse();
+    }
+
+    /**
+     * Builds person 42 with partner 99 and the given number of children; the first {@code withPartner} children
+     * also have 99 as parent.
+     */
+    private static Person family(int children, int withPartner) {
+        Person person = new Person(42);
+        Person partner = new Person(99);
+        person.setPartner(partner);
+        partner.setPartner(person);
+        for (int i = 0; i < children; i++) {
+            Person child = new Person(70 + i);
+            child.addParent(person);
+            person.addChild(child);
+            if (i < withPartner) {
+                child.addParent(partner);
+                partner.addChild(child);
+            }
+        }
+        return person;
+    }
+
     @Test
     void returnedCollectionsCannotChangeThePerson() {
         Person person = new Person(42);
