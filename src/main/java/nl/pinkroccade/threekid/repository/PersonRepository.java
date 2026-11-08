@@ -10,4 +10,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PersonRepository {
 
     private final Map<Long, Person> repository = new ConcurrentHashMap<>();
+
+    public void addOrUpdate(Person person){
+        // TODO: if person already exists, remove relations.
+        repository.put(person.getId(), person);
+
+        // TODO: set relations.
+    }
 }
