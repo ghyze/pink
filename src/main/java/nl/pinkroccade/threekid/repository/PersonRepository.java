@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -66,12 +68,18 @@ public class PersonRepository {
     }
 
     /**
-     * @return everyone who currently matches the pattern without the age check, in no particular order
+     * Finds the potential matches (everyone who matches the pattern without the age check) that pass the given filter,
+     * and converts them with the given mapper. Both run under the read lock, so they see the stored people in a
+     * consistent state. The mapper must return a copy: stored people must not be used after this method returns.
+     *
+     * @return the converted matches, in no particular order
      */
-    public List<Person> findPotentialMatches() {
+    public <T> List<T> findPotentialMatches(Predicate<Person> filter, Function<Person, T> mapper) {
         lock.readLock().lock();
         try {
             return potentialMatches.values().stream()
+                    .filter(filter)
+                    .map(mapper)
                     .toList();
         } finally {
             lock.readLock().unlock();

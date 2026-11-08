@@ -62,6 +62,11 @@ The age check ("at least one child under 18") is not part of the potential match
 without any new record arriving, so a stored result would go out of date. The age check is done on the potential
 matches when a request is answered.
 
+A child counts as under 18 until their eighteenth birthday. A child whose birth date we don't know yet does not count,
+because we cannot tell whether they are under 18; the person can still match once that birth date arrives. The service
+gets "today" from an injected `Clock` and reads it once per request, so all matches in one response are checked
+against the same day, and tests can use a fixed date.
+
 Alternatives:
 - Check everyone on every request. This is simpler and always correct, but the work grows with the number of people
   stored, and the assignment evaluates performance under load.
@@ -76,6 +81,28 @@ time, while a write has the repository to itself. Because all access is under th
 The downside is that writes are handled one at a time. Alternatives are a lock per person (more concurrency, but the
 people in one update have to be locked in a fixed order to avoid deadlocks), or immutable `Person` objects that are
 replaced as a whole (no locks for reading, but every update has to copy all related people).
+
+### Command and query
+Storing a record (`addOrUpdate`) and finding the matches (`findPotentialMatches`) are separate methods: one changes
+data and returns nothing, the other returns data and changes nothing (command-query separation).
+
+The stored `Person` objects must not be read outside the lock: another request could be changing them at the same
+moment. So `findPotentialMatches` takes a filter and a mapper, and runs both under the read lock. The service passes
+the age check as the filter and `PersonDTO::from` as the mapper, and only gets copies back. The repository does not
+need to know about `PersonDTO`.
+
+Because the command and the query each take the lock separately, another request can be handled in between. The
+response then reflects the state just after this record, possibly including that other request. This is accepted: the
+assignment asks whether anyone matches *now*, and with requests arriving at the same time, a slightly later state is
+just as valid an answer.
+
+Alternatives:
+- Let `addOrUpdate` return the matches, computed under the same write lock. The response then reflects exactly the
+  state after this record, but the method both changes and returns data.
+- Return an immutable copy type from the domain, such as a `PersonSnapshot` record. This works as well, but it is an
+  extra type that mostly duplicates `PersonDTO`.
+- Make the sets in `Person` thread-safe. This prevents exceptions, but a person could still be read halfway through an
+  update.
 
 
 ## PersonServiceTest
@@ -154,7 +181,8 @@ people are given as ID references (`{ "id": 77 }`), not as full records. A value
 person without known children has an empty list. Parents and children are sorted by ID, so the same data always gives
 the same response.
 
-The controller converts the stored `Person` objects with `PersonDTO.from`, instead of returning `Person` directly.
+The stored `Person` objects are converted with `PersonDTO.from` (under the repository's read lock, see "Command and
+query"), instead of being returned directly.
 This keeps the API format separate from the internal model, and avoids endless recursion when converting to JSON:
 a parent refers to the child, and the child refers back to the parent.
 

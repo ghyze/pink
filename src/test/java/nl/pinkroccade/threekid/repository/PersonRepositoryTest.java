@@ -226,21 +226,21 @@ class PersonRepositoryTest {
 
     @Test
     void nobodyPotentiallyMatchesInAnEmptyRepository() {
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
     }
 
     @Test
     void bothParentsPotentiallyMatchWhenTheyListTheSameThreeChildren() {
         addFamily();
 
-        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
+        assertThat(potentialMatchIds()).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test
     void personListingThreeChildrenThatAreNotThePartnersDoesNotMatch() {
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of(77L, 78L, 79L)));
 
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
     }
 
     @Test
@@ -248,11 +248,11 @@ class PersonRepositoryTest {
         repository.addOrUpdate(person(42, "Ada", null, null, 99L, List.of(77L, 78L, 79L)));
         repository.addOrUpdate(person(77, "Child", 42L, 99L, null, List.of()));
         repository.addOrUpdate(person(78, "Child", 42L, 99L, null, List.of()));
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
 
         repository.addOrUpdate(person(79, "Child", 42L, 99L, null, List.of()));
 
-        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
+        assertThat(potentialMatchIds()).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test
@@ -261,7 +261,7 @@ class PersonRepositoryTest {
 
         repository.addOrUpdate(person(79, "Child", 42L, null, null, List.of()));
 
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
     }
 
     @Test
@@ -270,7 +270,7 @@ class PersonRepositoryTest {
 
         repository.addOrUpdate(person(80, "Child", 42L, 99L, null, List.of()));
 
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
     }
 
     @Test
@@ -279,7 +279,7 @@ class PersonRepositoryTest {
 
         repository.addOrUpdate(person(99, "Partner", null, null, 43L, List.of(77L, 78L, 79L)));
 
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
     }
 
     @Test
@@ -288,7 +288,7 @@ class PersonRepositoryTest {
 
         repository.addOrUpdate(person(43, "Other", null, null, 99L, List.of()));
 
-        assertThat(repository.findPotentialMatches()).isEmpty();
+        assertThat(potentialMatchIds()).isEmpty();
     }
 
     @Test
@@ -298,7 +298,20 @@ class PersonRepositoryTest {
         assertThatThrownBy(() -> repository.addOrUpdate(person(3, "Third", null, null, null, List.of(77L))))
                 .isInstanceOf(InvalidPersonException.class);
 
-        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
+        assertThat(potentialMatchIds()).containsExactlyInAnyOrder(42L, 99L);
+    }
+
+    @Test
+    void findPotentialMatchesAppliesFilterAndMapper() {
+        addFamily();
+
+        List<String> names = repository.findPotentialMatches(p -> p.getId() == 42L, Person::getName);
+
+        assertThat(names).containsExactly("Ada");
+    }
+
+    private List<Long> potentialMatchIds() {
+        return repository.findPotentialMatches(p -> true, Person::getId);
     }
 
     /** 42 and 99 are partners with three children: 77, 78 and 79. */

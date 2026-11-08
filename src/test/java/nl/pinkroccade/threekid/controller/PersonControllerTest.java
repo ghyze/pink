@@ -63,7 +63,7 @@ class PersonControllerTest {
 
     @Test
     void returns200WithMatchingPeople() throws Exception {
-        when(personService.addPerson(any())).thenReturn(List.of(ADA.toPerson()));
+        when(personService.addPerson(any())).thenReturn(List.of(ADA));
 
         mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(ADA_JSON))
                 .andExpect(status().isOk())
@@ -78,7 +78,7 @@ class PersonControllerTest {
 
     @Test
     void returnsIncompleteMatchingPeopleWithUnknownValuesAsNull() throws Exception {
-        when(personService.addPerson(any())).thenReturn(List.of(new Person(99)));
+        when(personService.addPerson(any())).thenReturn(List.of(PersonDTO.from(new Person(99))));
 
         mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(ADA_JSON))
                 .andExpect(status().isOk())
