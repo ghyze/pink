@@ -83,6 +83,43 @@ class PersonDTOTest {
                 .isInstanceOf(InvalidPersonException.class);
     }
 
+    @Test
+    void fromConvertsAllValuesWithRelationsSortedById() {
+        Person person = new Person(42, "Ada Lovelace", BIRTHDATE, new Person(2), new Person(1), new Person(99),
+                List.of(new Person(79), new Person(77), new Person(78)));
+
+        PersonDTO dto = PersonDTO.from(person);
+
+        assertThat(dto).isEqualTo(new PersonDTO(42L, "Ada Lovelace", BIRTHDATE,
+                ref(1L), ref(2L), ref(99L), List.of(ref(77L), ref(78L), ref(79L))));
+    }
+
+    @Test
+    void fromGivesUnknownValuesAsNullAndNoChildrenAsEmptyList() {
+        PersonDTO dto = PersonDTO.from(new Person(99));
+
+        assertThat(dto).isEqualTo(new PersonDTO(99L, null, null, null, null, null, List.of()));
+    }
+
+    @Test
+    void fromWithOneParentFillsParent1() {
+        Person person = new Person(42);
+        person.addParent(new Person(1));
+
+        PersonDTO dto = PersonDTO.from(person);
+
+        assertThat(dto.parent1()).isEqualTo(ref(1L));
+        assertThat(dto.parent2()).isNull();
+    }
+
+    @Test
+    void fromAndToPersonGiveTheSameRecord() {
+        PersonDTO original = new PersonDTO(42L, "Ada Lovelace", BIRTHDATE,
+                ref(1L), ref(2L), ref(99L), List.of(ref(77L), ref(78L)));
+
+        assertThat(PersonDTO.from(original.toPerson())).isEqualTo(original);
+    }
+
     private static PersonReferenceDTO ref(Long id) {
         return new PersonReferenceDTO(id);
     }

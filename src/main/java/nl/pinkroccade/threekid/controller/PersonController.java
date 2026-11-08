@@ -25,11 +25,11 @@ public class PersonController {
     }
 
     @PostMapping
-    public ResponseEntity<List<Person>> addPerson(@RequestBody PersonDTO person) {
+    public ResponseEntity<List<PersonDTO>> addPerson(@RequestBody PersonDTO person) {
         List<Person> matches = personService.addPerson(person);
         if (matches.isEmpty()) {
             return ResponseEntity.status(NO_RESPONSE).build();
         }
-        return ResponseEntity.ok(matches);
+        return ResponseEntity.ok(matches.stream().map(PersonDTO::from).toList());
     }
 }

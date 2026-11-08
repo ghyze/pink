@@ -84,3 +84,26 @@ record is rejected, which means the repository has to check this before it chang
 
 An alternative is "last record wins": replace one of the existing parents with the new one. This never rejects a
 request, but there is no rule for which parent to replace, and data would be lost without notice.
+
+## Response format
+The assignment says: "The response should consist of all the people currently matching the pattern. We should respond
+with everything we know about the matching people (you might not know their name or birthdate yet)."
+
+The response is a list with one record per matching person, in the same format as the request (`PersonDTO`). Each
+record contains everything we know about that person: ID, name, birth date, parents, partner and children. Related
+people are given as ID references (`{ "id": 77 }`), not as full records. A value we don't know yet is `null`, and a
+person without known children has an empty list. Parents and children are sorted by ID, so the same data always gives
+the same response.
+
+The controller converts the stored `Person` objects with `PersonDTO.from`, instead of returning `Person` directly.
+This keeps the API format separate from the internal model, and avoids endless recursion when converting to JSON:
+a parent refers to the child, and the child refers back to the parent.
+
+Alternatives:
+- Return related people as full records. This cannot be done completely, because the relations point back to each
+  other, so it would have to stop somewhere.
+- Expand one level: the matching person with the partner and children as full records, whose own relations are given
+  as references. This gives more information in one response, but needs a separate response format, and the
+  assignment does not clearly ask for it.
+- Return `Person` directly. This needs no conversion, but makes the internal model part of the API, and needs Jackson
+  annotations to stop the recursion.

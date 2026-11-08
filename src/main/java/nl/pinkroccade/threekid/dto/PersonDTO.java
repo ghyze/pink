@@ -4,6 +4,7 @@ import nl.pinkroccade.threekid.domain.InvalidPersonException;
 import nl.pinkroccade.threekid.domain.Person;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -28,6 +29,29 @@ public record PersonDTO(
         if (children != null && children.stream().anyMatch(Objects::isNull)) {
             throw new InvalidPersonException("The list of children cannot contain null.");
         }
+    }
+
+    /**
+     * Converts a stored person for the response. Related people are given as ID references, sorted by ID so the
+     * output is always the same. A relation we know nothing about is {@code null}; no children is an empty list.
+     */
+    public static PersonDTO from(Person person) {
+        List<PersonReferenceDTO> parents = toReferences(person.getParents());
+        return new PersonDTO(person.getId(),
+                person.getName(),
+                person.getBirthDate(),
+                parents.size() > 0 ? parents.get(0) : null,
+                parents.size() > 1 ? parents.get(1) : null,
+                person.getPartner() == null ? null : new PersonReferenceDTO(person.getPartner().getId()),
+                toReferences(person.getChildren()));
+    }
+
+    private static List<PersonReferenceDTO> toReferences(Collection<Person> people) {
+        return people.stream()
+                .map(Person::getId)
+                .sorted()
+                .map(PersonReferenceDTO::new)
+                .toList();
     }
 
     public Person toPerson(){

@@ -1,6 +1,7 @@
 package nl.pinkroccade.threekid.controller;
 
 import nl.pinkroccade.threekid.domain.InvalidPersonException;
+import nl.pinkroccade.threekid.domain.Person;
 import nl.pinkroccade.threekid.dto.PersonDTO;
 import nl.pinkroccade.threekid.dto.PersonReferenceDTO;
 import nl.pinkroccade.threekid.service.PersonService;
@@ -68,8 +69,22 @@ class PersonControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(42))
                 .andExpect(jsonPath("$[0].birthDate").value("1815-12-10"))
+                .andExpect(jsonPath("$[0].parent1.id").value(1))
+                .andExpect(jsonPath("$[0].parent2.id").value(2))
                 .andExpect(jsonPath("$[0].partner.id").value(99))
+                .andExpect(jsonPath("$[0].children[0].id").value(77))
                 .andExpect(jsonPath("$[0].children[1].id").value(78));
+    }
+
+    @Test
+    void returnsIncompleteMatchingPeopleWithUnknownValuesAsNull() throws Exception {
+        when(personService.addPerson(any())).thenReturn(List.of(new Person(99)));
+
+        mockMvc.perform(post("/api/v1/people").contentType(MediaType.APPLICATION_JSON).content(ADA_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(99))
+                .andExpect(jsonPath("$[0].name").doesNotExist())
+                .andExpect(jsonPath("$[0].children").isEmpty());
     }
 
     @Test
