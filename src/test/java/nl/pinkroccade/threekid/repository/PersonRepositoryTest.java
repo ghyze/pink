@@ -233,7 +233,7 @@ class PersonRepositoryTest {
     void bothParentsPotentiallyMatchWhenTheyListTheSameThreeChildren() {
         addFamily();
 
-        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactly(42L, 99L);
+        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test
@@ -252,7 +252,7 @@ class PersonRepositoryTest {
 
         repository.addOrUpdate(person(79, "Child", 42L, 99L, null, List.of()));
 
-        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactly(42L, 99L);
+        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test
@@ -298,7 +298,7 @@ class PersonRepositoryTest {
         assertThatThrownBy(() -> repository.addOrUpdate(person(3, "Third", null, null, null, List.of(77L))))
                 .isInstanceOf(InvalidPersonException.class);
 
-        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactly(42L, 99L);
+        assertThat(repository.findPotentialMatches()).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
 
     /** 42 and 99 are partners with three children: 77, 78 and 79. */

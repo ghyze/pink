@@ -104,7 +104,7 @@ class PersonServiceTest {
 
         List<Person> matches = service.addPerson(child);
 
-        assertThat(matches).extracting(Person::getId).containsExactly(42L, 99L);
+        assertThat(matches).extracting(Person::getId).containsExactlyInAnyOrder(42L, 99L);
     }
 
     @Test

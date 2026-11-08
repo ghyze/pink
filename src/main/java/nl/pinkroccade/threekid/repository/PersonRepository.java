@@ -5,7 +5,6 @@ import nl.pinkroccade.threekid.domain.Person;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,13 +66,12 @@ public class PersonRepository {
     }
 
     /**
-     * @return everyone who currently matches the pattern without the age check, sorted by ID
+     * @return everyone who currently matches the pattern without the age check, in no particular order
      */
     public List<Person> findPotentialMatches() {
         lock.readLock().lock();
         try {
             return potentialMatches.values().stream()
-                    .sorted(Comparator.comparingLong(Person::getId))
                     .toList();
         } finally {
             lock.readLock().unlock();
