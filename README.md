@@ -22,6 +22,20 @@ Phase 1 of the assignment is implemented; phase 2 (deleting and ignoring IDs) is
 ```
 On Windows, use `mvnw.cmd` instead of `./mvnw`.
 
+## Docker
+The service can also be built and run in Docker, without Java installed locally:
+```shell
+docker build -t threekid .
+docker run --rm -p 8080:8080 threekid
+```
+The `Dockerfile` has two stages. The first builds the jar with the Maven wrapper on a JDK image; the second only
+contains a JRE and that jar, and runs it as a non-root user. The dependencies are downloaded in a separate layer, so
+a rebuild after a code change does not download them again. The tests are not run during the image build: run them
+with `./mvnw test`.
+
+An alternative is `./mvnw spring-boot:build-image`, which builds an image with Cloud Native Buildpacks without a
+`Dockerfile`. That needs no Docker knowledge to maintain, but gives less control over what goes into the image.
+
 ## API
 `POST /api/v1/people` with one person record:
 ```json
