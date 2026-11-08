@@ -52,6 +52,15 @@ Only `id` is required. A relation that is left out means the person has no such 
 | `repository` | `PersonRepository`: in-memory storage, bidirectional relations and the list of potential matches |
 | `domain` | `Person` and `InvalidPersonException` |
 
+## Tests
+| Test | Kind | What it covers |
+|---|---|---|
+| `PersonApiIntegrationTest` | integration | the whole application over real HTTP: matching, the age check, updates, autorepair and invalid records |
+| `PersonControllerTest` | slice (`@WebMvcTest`) | status codes, JSON format and validation, with a mocked service |
+| `PersonServiceTest` | unit, scenario | a series of records that build on each other (see below) |
+| `PersonRepositoryTest` | unit | storage, bidirectional relations, updates and the potential matches |
+| `PersonDTOTest`, `PersonTest` | unit | validation, conversion, the pattern and the age check |
+
 # Architecture and design decisions
 ## PersonRepository
 The name `Repository` indicates data storage. As long as the public methods of this class stay the same, the way the
@@ -186,6 +195,25 @@ to repeat (part of) the setup, and the setup grows with every step in the scenar
 Another alternative is a single `@TestFactory` that returns a stream of `DynamicTest`s. This keeps the whole scenario
 in one method, but `@BeforeEach` and `@AfterEach` do not run per step, and the steps cannot be selected individually
 in the IDE.
+
+## PersonApiIntegrationTest
+`PersonApiIntegrationTest` starts the whole application on a random port (`@SpringBootTest` with `RANDOM_PORT`) and
+sends real HTTP requests with `RestTestClient`. This covers what the unit tests cannot: the JSON conversion by Jackson,
+the `444` and `400` responses as a client sees them, and all layers working together with the real repository.
+
+Two things make the tests repeatable:
+- "Today" is fixed at 1 January 2026 by a `@Primary` `Clock` bean in a `@TestConfiguration`, so the age check gives
+  the same result every day.
+- Each test starts with an empty repository, because `@DirtiesContext` creates a new application context after every
+  test. This costs a few seconds in total, but the tests cannot influence each other.
+
+Alternatives:
+- `@SpringBootTest` with `MockMvc` instead of a real server. This is a bit faster, but skips the HTTP layer of the
+  server.
+- Share one application context and give every test its own IDs. This is faster, but a test that accidentally uses
+  the same ID as another test fails depending on the order in which the tests run.
+- An ordered scenario, as in `PersonServiceTest`. This would avoid repeating the setup, but here each test checks one
+  behaviour from a clean start, which makes a failure easier to understand.
 
 ## Person
 ### Relations as sets
